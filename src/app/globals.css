@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+:root {
+  --background: #BCD4CC;
+  --foreground: #1a1a1a;
+  --header-color: #1a1a1a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand: #E3A750;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #002F45;
+    --foreground: #ffffff;
+    --header-color: #ffffff;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center rounded-md px-4 py-2 font-medium transition;
+}
+.btn-primary { 
+  background: var(--color-brand); 
+  color: #002F45; 
+}
+.btn-outline { 
+  @apply border; 
+  border-color: var(--foreground); 
+  background: transparent;
+  color: var(--foreground);
+}
+.card { 
+  @apply rounded-lg border p-4; 
+  background: white; 
+  border-color: #e5e7eb;
+}
+@media (prefers-color-scheme: dark) {
+  .card { 
+    background: #1f2937; 
+    border-color: #374151; 
+  }
+  .btn-outline {
+    background: #374151;
+    border-color: #6b7280;
+    color: #ffffff;
+  }
+  .btn-outline:hover {
+    background: #4b5563;
+  }
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .card { @apply p-3; }
+  .btn { @apply px-3 py-2 text-sm; }
+  .mobile-stack { @apply flex flex-col space-y-2; }
+  .mobile-grid { @apply grid grid-cols-2 gap-2; }
+}
