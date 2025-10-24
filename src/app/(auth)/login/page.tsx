@@ -21,7 +21,7 @@ export default function LoginPage() {
             password,
           });
           if (res?.error) setError(res.error);
-          if (res?.ok) window.location.href = "/";
+          if (res?.ok) window.location.href = "/new";
         }}
       >
         <input

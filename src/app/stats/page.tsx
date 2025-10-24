@@ -20,6 +20,7 @@ export default function StatsPage() {
   const [courseId, setCourseId] = useState<string | null>(null);
   const [rows, setRows] = useState<{ hole: number; par: number; avg: number }[]>([]);
   const [insights, setInsights] = useState<Insights | null>(null);
+  const [rounds, setRounds] = useState<any[]>([]);
   const [timePeriod, setTimePeriod] = useState('all');
 
   useEffect(() => {
@@ -34,14 +35,21 @@ export default function StatsPage() {
   useEffect(() => {
     if (!courseId) return;
     (async () => {
-      const [statsRes, insightsRes] = await Promise.all([
+      const [statsRes, insightsRes, roundsRes] = await Promise.all([
         fetch(`/api/stats?courseId=${courseId}`),
-        fetch(`/api/insights?courseId=${courseId}&timePeriod=${timePeriod}`)
+        fetch(`/api/insights?courseId=${courseId}&timePeriod=${timePeriod}`),
+        fetch(`/api/rounds?courseId=${courseId}&timePeriod=${timePeriod}`)
       ]);
       const statsData = await statsRes.json();
       const insightsData = await insightsRes.json();
+      const roundsData = await roundsRes.json();
+      
+      console.log('Rounds API response:', roundsData);
+      console.log('Rounds array:', roundsData.rounds);
+      
       setRows(statsData.rows ?? []);
       setInsights(insightsData.insights);
+      setRounds(roundsData.rounds ?? []);
     })();
   }, [courseId, timePeriod]);
 
@@ -75,26 +83,23 @@ export default function StatsPage() {
 
       {/* Insights Overview */}
       {insights && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="card text-center p-4">
-            <div className="text-3xl mb-2">🎯</div>
-            <div className="text-2xl font-bold text-[var(--color-brand)]">{insights.totalRounds}</div>
-            <div className="text-sm text-gray-600 dark:text-white">Rounds Played</div>
-          </div>
-          <div className="card text-center p-4">
-            <div className="text-3xl mb-2">📊</div>
-            <div className="text-2xl font-bold text-[var(--color-brand)]">{insights.averageScore}</div>
-            <div className="text-sm text-gray-600 dark:text-white">Average Score</div>
-          </div>
-          <div className="card text-center p-4">
-            <div className="text-3xl mb-2">🏆</div>
-            <div className="text-2xl font-bold text-green-600">{insights.bestScore}</div>
-            <div className="text-sm text-gray-600 dark:text-white">Best Score</div>
-          </div>
-          <div className="card text-center p-4">
-            <div className="text-3xl mb-2">📈</div>
-            <div className="text-2xl font-bold text-blue-600">{insights.improvement > 0 ? '+' : ''}{insights.improvement}</div>
-            <div className="text-sm text-gray-600 dark:text-white">Improvement</div>
+        <div className="card p-6">
+          <div className="flex items-center justify-between">
+            <div className="text-center flex-1">
+              <div className="text-3xl mb-2">📊</div>
+              <div className="text-2xl font-bold text-[var(--color-brand)]">{insights.averageScore}</div>
+              <div className="text-sm text-gray-600 dark:text-white">Average Score</div>
+            </div>
+            <div className="text-center flex-1">
+              <div className="text-3xl mb-2">🏆</div>
+              <div className="text-2xl font-bold text-green-600">{insights.bestScore}</div>
+              <div className="text-sm text-gray-600 dark:text-white">Best Score</div>
+            </div>
+            <div className="text-center flex-1">
+              <div className="text-3xl mb-2">🎯</div>
+              <div className="text-2xl font-bold text-[var(--color-brand)]">{insights.totalRounds}</div>
+              <div className="text-sm text-gray-600 dark:text-white">Rounds Played</div>
+            </div>
           </div>
         </div>
       )}
@@ -134,28 +139,103 @@ export default function StatsPage() {
       )}
 
 
-      {/* Detailed Stats Table */}
+      {/* Detailed Stats Table - Collapsible */}
       <div className="card">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left">
-              <th className="p-2">Hole</th>
-              <th className="p-2">Average Score</th>
-              <th className="p-2">Par</th>
-              <th className="p-2">Average Difference</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.hole} className="border-t">
-                <td className="p-2">{r.hole}</td>
-                <td className="p-2">{r.avg.toFixed(1)}</td>
-                <td className="p-2">{r.par}</td>
-                <td className="p-2">{(r.avg - r.par).toFixed(1)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <details className="group">
+          <summary className="flex items-center justify-between cursor-pointer p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
+            <h3 className="text-lg font-semibold text-[var(--header-color)]">📋 Detailed Hole Statistics</h3>
+            <span className="text-2xl transition-transform group-open:rotate-90">▶</span>
+          </summary>
+          <div className="border-t">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left bg-gray-50 dark:bg-gray-800">
+                  <th className="p-3 font-medium">Hole</th>
+                  <th className="p-3 font-medium">Average Score</th>
+                  <th className="p-3 font-medium">Par</th>
+                  <th className="p-3 font-medium">Average Difference</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.hole} className="border-t hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td className="p-3 font-medium">{r.hole}</td>
+                    <td className="p-3">{r.avg.toFixed(1)}</td>
+                    <td className="p-3">{r.par}</td>
+                    <td className="p-3">
+                      <span className={`font-medium ${(r.avg - r.par) < 0 ? 'text-green-600' : (r.avg - r.par) > 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                        {(r.avg - r.par) > 0 ? '+' : ''}{(r.avg - r.par).toFixed(1)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+
+      {/* Individual Rounds - Collapsible */}
+      <div className="card">
+        <details className="group">
+          <summary className="flex items-center justify-between cursor-pointer p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
+            <h3 className="text-lg font-semibold text-[var(--header-color)]">🏌️ Individual Rounds</h3>
+            <span className="text-2xl transition-transform group-open:rotate-90">▶</span>
+          </summary>
+          <div className="border-t">
+            {console.log('Rounds in render:', rounds, 'Length:', rounds.length)}
+            <div className="p-2 text-xs text-gray-500">
+              Debug: {rounds.length} rounds found
+            </div>
+            {rounds.length > 0 ? (
+              <div className="space-y-2 p-4">
+                {rounds.map((round, index) => (
+                  <div key={round.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="text-lg">🏌️</div>
+                      <div>
+                        <div className="font-medium text-[var(--foreground)]">
+                          Round #{rounds.length - index}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-300">
+                          {new Date(round.startedAt).toLocaleDateString()} • {round.roundType}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-[var(--color-brand)]">
+                          {round.totalStrokes}
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-300">Total</div>
+                      </div>
+                      {round.rating && (
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-green-600">
+                            {round.rating}
+                          </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-300">Rating</div>
+                        </div>
+                      )}
+                      {round.weather && (
+                        <div className="text-right">
+                          <div className="text-sm font-medium text-blue-600">
+                            {round.weather.conditions}
+                          </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-300">Weather</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 text-center text-gray-600 dark:text-gray-300">
+                No rounds found for this course and time period.
+              </div>
+            )}
+          </div>
+        </details>
       </div>
     </main>
   );

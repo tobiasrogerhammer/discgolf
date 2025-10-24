@@ -43,6 +43,10 @@ export async function GET(req: Request) {
     orderBy: { startedAt: 'desc' }
   });
 
+  console.log('Insights API - Found rounds:', rounds.length, 'for course:', courseId, 'user:', me.id);
+  console.log('Insights API - Date filter:', dateFilter);
+  console.log('Insights API - Time period:', timePeriod);
+
   if (rounds.length === 0) {
     return NextResponse.json({ 
       insights: {

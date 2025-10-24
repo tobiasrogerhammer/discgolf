@@ -2,6 +2,62 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
+export async function GET(req: Request) {
+  try {
+    const session = await getServerSession();
+    if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const me = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    
+    console.log('Rounds API - User found:', me.id, 'Email:', session.user.email);
+
+    const { searchParams } = new URL(req.url);
+    const courseId = searchParams.get('courseId');
+    const timePeriod = searchParams.get('timePeriod') || 'all';
+
+    console.log('Rounds API - CourseId:', courseId, 'TimePeriod:', timePeriod);
+
+    if (!courseId) {
+      return NextResponse.json({ error: "Course ID required" }, { status: 400 });
+    }
+
+    // Get date filter based on time period
+    let dateFilter = {};
+    if (timePeriod === 'month') {
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+      dateFilter = { startedAt: { gte: oneMonthAgo } };
+    } else if (timePeriod === 'year') {
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      dateFilter = { startedAt: { gte: oneYearAgo } };
+    }
+
+    // Get user's rounds on this course
+    const rounds = await prisma.round.findMany({
+      where: {
+        userId: me.id,
+        courseId,
+        completed: true,
+        ...dateFilter
+      },
+      include: {
+        weather: true
+      },
+      orderBy: { startedAt: 'desc' }
+    });
+
+    console.log('Found rounds:', rounds.length, 'for course:', courseId, 'user:', me.id);
+    console.log('Date filter:', dateFilter);
+    console.log('Time period:', timePeriod);
+
+    return NextResponse.json({ rounds });
+  } catch (error) {
+    console.error('Error fetching rounds:', error);
+    return NextResponse.json({ error: "Failed to fetch rounds" }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const session = await getServerSession();
