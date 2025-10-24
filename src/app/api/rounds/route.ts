@@ -9,13 +9,9 @@ export async function GET(req: Request) {
     const me = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     
-    console.log('Rounds API - User found:', me.id, 'Email:', session.user.email);
-
     const { searchParams } = new URL(req.url);
     const courseId = searchParams.get('courseId');
     const timePeriod = searchParams.get('timePeriod') || 'all';
-
-    console.log('Rounds API - CourseId:', courseId, 'TimePeriod:', timePeriod);
 
     if (!courseId) {
       return NextResponse.json({ error: "Course ID required" }, { status: 400 });
@@ -46,10 +42,6 @@ export async function GET(req: Request) {
       },
       orderBy: { startedAt: 'desc' }
     });
-
-    console.log('Found rounds:', rounds.length, 'for course:', courseId, 'user:', me.id);
-    console.log('Date filter:', dateFilter);
-    console.log('Time period:', timePeriod);
 
     return NextResponse.json({ rounds });
   } catch (error) {

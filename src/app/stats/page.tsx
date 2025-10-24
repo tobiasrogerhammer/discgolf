@@ -44,9 +44,6 @@ export default function StatsPage() {
       const insightsData = await insightsRes.json();
       const roundsData = await roundsRes.json();
       
-      console.log('Rounds API response:', roundsData);
-      console.log('Rounds array:', roundsData.rounds);
-      
       setRows(statsData.rows ?? []);
       setInsights(insightsData.insights);
       setRounds(roundsData.rounds ?? []);
@@ -58,6 +55,19 @@ export default function StatsPage() {
     const maxVal = data.length ? Math.max(...data.map((d) => Math.max(d.par, d.avg))) : 10;
     return Math.max(10, Math.ceil(maxVal));
   }, [data]);
+
+  // Rating calculation function (same as in the rounds API)
+  const getRatingFromScore = (score: number) => {
+    const scoreToRating: Record<number, number> = {
+      95:402,94:414,93:426,92:438,91:450,90:462,89:474,88:486,87:498,86:510,
+      85:522,84:534,83:546,82:558,81:570,80:582,79:594,78:606,77:618,76:630,
+      75:642,74:654,73:666,72:678,71:690,70:702,69:714,68:726,67:738,66:750,
+      65:762,64:774,63:786,62:798,61:810,60:822,59:834,58:846,57:858,56:870,
+      55:882,54:894,53:906,52:918,51:930,50:942,49:834,48:846,47:858,46:870,
+      45:1002,44:1014,43:1026,42:1038,41:1050,40:1062,39:1074,38:1086,37:1098,36:1110,
+    };
+    return scoreToRating[score] ?? null;
+  };
 
   return (
     <main className="p-4 space-y-4">
@@ -89,11 +99,21 @@ export default function StatsPage() {
               <div className="text-3xl mb-2">📊</div>
               <div className="text-2xl font-bold text-[var(--color-brand)]">{insights.averageScore}</div>
               <div className="text-sm text-gray-600 dark:text-white">Average Score</div>
+              {getRatingFromScore(Math.round(insights.averageScore)) && (
+                <div className="text-xs text-green-600 font-medium mt-1">
+                  Rating: {getRatingFromScore(Math.round(insights.averageScore))}
+                </div>
+              )}
             </div>
             <div className="text-center flex-1">
               <div className="text-3xl mb-2">🏆</div>
               <div className="text-2xl font-bold text-green-600">{insights.bestScore}</div>
               <div className="text-sm text-gray-600 dark:text-white">Best Score</div>
+              {getRatingFromScore(insights.bestScore) && (
+                <div className="text-xs text-green-600 font-medium mt-1">
+                  Rating: {getRatingFromScore(insights.bestScore)}
+                </div>
+              )}
             </div>
             <div className="text-center flex-1">
               <div className="text-3xl mb-2">🎯</div>
@@ -183,10 +203,6 @@ export default function StatsPage() {
             <span className="text-2xl transition-transform group-open:rotate-90">▶</span>
           </summary>
           <div className="border-t">
-            {console.log('Rounds in render:', rounds, 'Length:', rounds.length)}
-            <div className="p-2 text-xs text-gray-500">
-              Debug: {rounds.length} rounds found
-            </div>
             {rounds.length > 0 ? (
               <div className="space-y-2 p-4">
                 {rounds.map((round, index) => (
@@ -215,14 +231,6 @@ export default function StatsPage() {
                             {round.rating}
                           </div>
                           <div className="text-xs text-gray-600 dark:text-gray-300">Rating</div>
-                        </div>
-                      )}
-                      {round.weather && (
-                        <div className="text-right">
-                          <div className="text-sm font-medium text-blue-600">
-                            {round.weather.conditions}
-                          </div>
-                          <div className="text-xs text-gray-600 dark:text-gray-300">Weather</div>
                         </div>
                       )}
                     </div>
