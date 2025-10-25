@@ -1,36 +1,171 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Disc Golf Tracker
+
+A modern disc golf round tracking application built with Next.js, Convex, Clerk, and shadcn/ui.
+
+## Features
+
+- 🥏 **Round Tracking**: Track your disc golf rounds with detailed scoring
+- 📊 **Statistics**: View your performance with comprehensive stats and analytics
+- 👥 **Social Features**: Connect with friends and compete on leaderboards
+- 🎯 **Course Management**: Browse and select from various disc golf courses
+- 📱 **Mobile-First**: Responsive design optimized for mobile devices
+- 🔐 **Secure Authentication**: Powered by Clerk for secure user management
+
+## Tech Stack
+
+- **Frontend**: Next.js 15, React 19, TypeScript
+- **Backend**: Convex (real-time database and functions)
+- **Authentication**: Clerk
+- **UI Components**: shadcn/ui with Tailwind CSS
+- **Charts**: Recharts for data visualization
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+ 
+- npm, yarn, pnpm, or bun
+- Convex account
+- Clerk account
+
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd discgolf
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up environment variables:
+Create a `.env.local` file with the following variables:
+```env
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key_here
+CLERK_SECRET_KEY=your_clerk_secret_key_here
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Clerk URLs
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/login
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/register
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/
 
-## Learn More
+# Convex
+NEXT_PUBLIC_CONVEX_URL=your_convex_deployment_url_here
+```
 
-To learn more about Next.js, take a look at the following resources:
+4. Set up Convex:
+```bash
+npx convex dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+5. Run the development server:
+```bash
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-## Deploy on Vercel
+## Project Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+src/
+├── app/                    # Next.js app router pages
+│   ├── (auth)/            # Authentication pages
+│   ├── new/               # New round page
+│   ├── stats/             # Statistics page
+│   ├── friends/           # Friends management
+│   ├── profile/           # User profile
+│   └── ...
+├── components/            # Reusable UI components
+│   └── ui/               # shadcn/ui components
+├── convex/               # Convex backend functions
+│   ├── schema.ts         # Database schema
+│   ├── users.ts          # User functions
+│   ├── courses.ts        # Course functions
+│   ├── rounds.ts         # Round functions
+│   ├── friends.ts        # Friend functions
+│   └── stats.ts          # Statistics functions
+├── hooks/                # Custom React hooks
+├── lib/                  # Utility libraries
+└── types/                # TypeScript type definitions
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Key Features
+
+### Round Tracking
+- Select courses and track scores hole by hole
+- Support for different round types (Casual, Practice, Tournament, Competitive)
+- Real-time score calculation and statistics
+
+### Statistics & Analytics
+- Comprehensive performance metrics
+- Course-specific statistics
+- Progress tracking over time
+- Best/worst hole analysis
+
+### Social Features
+- Friend system with invitations
+- Leaderboards and rankings
+- Social round sharing
+
+### Course Management
+- Browse available courses
+- Course details and hole information
+- Search and filter functionality
+
+## Development
+
+### Available Scripts
+
+- `npm run dev` - Start development server with Convex
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run convex` - Run Convex CLI commands
+
+### Database Schema
+
+The application uses Convex with the following main entities:
+- **Users**: User profiles and authentication
+- **Courses**: Disc golf course information
+- **Rounds**: Individual round records
+- **Scores**: Hole-by-hole scoring
+- **Friendships**: Social connections
+- **Statistics**: Aggregated performance data
+
+## Deployment
+
+### Vercel (Recommended)
+
+1. Push your code to GitHub
+2. Connect your repository to Vercel
+3. Add environment variables in Vercel dashboard
+4. Deploy!
+
+### Other Platforms
+
+The application can be deployed to any platform that supports Next.js:
+- Netlify
+- Railway
+- DigitalOcean App Platform
+- AWS Amplify
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.
+
+## Support
+
+For support, please open an issue on GitHub or contact the development team.

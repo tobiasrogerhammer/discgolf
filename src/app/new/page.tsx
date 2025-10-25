@@ -1,408 +1,344 @@
 "use client";
+
 import { useState } from "react";
-import { enqueueRound, flushQueue } from "@/lib/offlineQueue";
-import { useGameState } from "@/hooks/useGameState";
-import { useFriends } from "@/hooks/useFriends";
-import { roundApi } from "@/lib/api";
-import { SUCCESS_MESSAGES, ERROR_MESSAGES } from "@/lib/constants";
-import Header from "@/components/Header";
-import CoursePreview from "@/components/CoursePreview";
-import StartRoundModal from "@/components/StartRoundModal";
-import ScoreInput from "@/components/ScoreInput";
-import PlayerSelector from "@/components/PlayerSelector";
-import PlayerScoresSummary from "@/components/PlayerScoresSummary";
-import ErrorBoundary from "@/components/ErrorBoundary";
-import LoadingSpinner from "@/components/LoadingSpinner";
-import { LineChart, Line, CartesianGrid, XAxis, YAxis } from "recharts";
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { FriendSelector } from '@/components/FriendSelector';
+import { MultiPlayerScoreInput } from '@/components/MultiPlayerScoreInput';
+
+interface Participant {
+  id: string;
+  type: 'user' | 'guest';
+  name: string;
+  email?: string;
+  userId?: any; // Convex ID type
+}
+
+interface ScoreData {
+  [participantId: string]: {
+    [hole: number]: number;
+  };
+}
 
 export default function NewGamePage() {
-  const [currentHole, setCurrentHole] = useState(0);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Custom hooks
-  const gameState = useGameState();
-  const friendsState = useFriends();
+  const { user, currentUser } = useCurrentUser();
+  const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
+  const [roundType, setRoundType] = useState<string>("CASUAL");
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [scores, setScores] = useState<ScoreData>({});
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isRoundComplete, setIsRoundComplete] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
-  // Debug gameState
-  console.log('GameState object:', {
-    hasIncrementScore: typeof gameState.incrementScore === 'function',
-    hasDecrementScore: typeof gameState.decrementScore === 'function',
-    currentPlayer: gameState.currentPlayer,
-    players: gameState.players,
-    started: gameState.started
-  });
+  const courses = useQuery(api.courses.getAll);
+  const courseHoles = useQuery(api.courses.getHoles, 
+    selectedCourse ? { courseId: selectedCourse as any } : "skip"
+  );
+  
+  const createRound = useMutation(api.rounds.create);
+  const createGroupRound = useMutation(api.groupRounds.createGroupRound);
+  
+  const { toast } = useToast();
 
-  // Save round function
-  const saveRound = async () => {
-    if (!gameState.selected || !gameState.currentPlayer) return;
+  const selectedCourseData = courses?.find(c => c._id === selectedCourse);
 
-    setSaving(true);
-    setError(null);
-
-    try {
-      const roundData = {
-        courseId: gameState.selected.id,
-        strokesByHole: gameState.currentPlayer.scores,
-        roundType: gameState.roundType,
-        weather: Object.values(gameState.weather).some(v => v) ? {
-          temperature: gameState.weather.temperature ? parseFloat(gameState.weather.temperature) : 0,
-          windSpeed: gameState.weather.windSpeed ? parseFloat(gameState.weather.windSpeed) : 0,
-          windDirection: gameState.weather.windDirection || '',
-          conditions: gameState.weather.conditions || '',
-          humidity: gameState.weather.humidity ? parseFloat(gameState.weather.humidity) : 0,
-          pressure: gameState.weather.pressure ? parseFloat(gameState.weather.pressure) : 0,
-        } : undefined,
-        startedAt: new Date().toISOString()
-      };
-
-      const result = await roundApi.save(roundData);
-      
-      if (result.success) {
-        alert(SUCCESS_MESSAGES.ROUND_SAVED);
-        gameState.cancelRound();
-        setCurrentHole(0);
-      } else {
-        setError(result.error || ERROR_MESSAGES.SAVE_FAILED);
-      }
-    } catch (error) {
-      console.error('Save error:', error);
-      setError(ERROR_MESSAGES.SAVE_FAILED);
-    } finally {
-      setSaving(false);
-    }
+  const handleScoresChange = (newScores: ScoreData) => {
+    setScores(newScores);
   };
 
-  // Add location data
-  const addLocationData = async () => {
-    if (!gameState.selected) return;
+  const handleRoundComplete = (complete: boolean) => {
+    setIsRoundComplete(complete);
+  };
 
+  const handleSaveRound = async () => {
+    if (!selectedCourse || !currentUser) {
+      console.error('Missing required data:', { selectedCourse, currentUser });
+      return;
+    }
+
+    console.log('Saving round with data:', {
+      selectedCourse,
+      currentUser: currentUser._id,
+      participants: participants.length,
+      scores: Object.keys(scores),
+      roundType
+    });
+
+    setIsSaving(true);
     try {
-      const res = await fetch('/api/courses/update-ekeberg', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ courseId: gameState.selected.id })
+      if (participants.length === 0) {
+        // Single player round
+        const playerScores = scores['you'] || {};
+        const roundScores = courseHoles?.map((hole, index) => ({
+          hole: hole.hole,
+          strokes: playerScores[index] || hole.par,
+        })) || [];
+
+        await createRound({
+          userId: currentUser._id,
+          courseId: selectedCourse as any,
+          roundType: roundType as any,
+          scores: roundScores,
+        });
+
+        toast({
+          title: "Round saved!",
+          description: "Your disc golf round has been saved successfully.",
+        });
+      } else {
+        // Group round
+        const allParticipants = [
+          {
+            userId: currentUser._id,
+            scores: courseHoles?.map((hole, index) => ({
+              hole: hole.hole,
+              strokes: scores['you']?.[index] || hole.par,
+            })) || [],
+          },
+          ...participants.map(participant => ({
+            userId: participant.userId as any,
+            guestName: participant.type === 'guest' ? participant.name : undefined,
+            guestEmail: participant.type === 'guest' ? participant.email : undefined,
+            scores: courseHoles?.map((hole, index) => ({
+              hole: hole.hole,
+              strokes: scores[participant.id]?.[index] || hole.par,
+            })) || [],
+          }))
+        ];
+
+        await createGroupRound({
+          userId: currentUser._id,
+          courseId: selectedCourse as any,
+          roundType: roundType as any,
+          participants: allParticipants,
+        });
+
+        toast({
+          title: "Group round saved!",
+          description: `Round with ${participants.length + 1} players has been saved successfully.`,
+        });
+      }
+
+      // Reset form
+      setSelectedCourse(null);
+      setParticipants([]);
+      setScores({});
+      setIsDialogOpen(false);
+      setIsRoundComplete(false);
+    } catch (error) {
+      console.error("Error saving round:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save round. Please try again.",
+        variant: "destructive",
       });
-
-      if (res.ok) {
-        alert('Location data added! You can now fetch weather data.');
-        // Refresh courses to get updated data
-        window.location.reload();
-      } else {
-        alert('Failed to add location data');
-      }
-    } catch (error) {
-      console.error('Location update error:', error);
-      alert('Failed to add location data');
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  // Navigation functions
-  const nextHole = () => {
-    if (currentHole < (gameState.selected?.holes || 18) - 1) {
-      setCurrentHole(currentHole + 1);
-    }
-  };
-
-  const prevHole = () => {
-    if (currentHole > 0) {
-      setCurrentHole(currentHole - 1);
-    }
-  };
-
-  // Handle start round
-  const handleStartRound = (players: any[], roundType: any, weather: any) => {
-    gameState.startRound(players);
-    setCurrentHole(0);
-  };
-
-  if (error) {
-    return (
-      <div className="p-4">
-        <Header title="Error" />
-        <div className="card text-center">
-          <h2 className="text-xl font-bold text-red-600 mb-2">Something went wrong</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-4">{error}</p>
-          <button
-            onClick={() => setError(null)}
-            className="btn btn-primary"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Temporarily disabled for testing
+  // if (!user || !currentUser) {
+  //   return (
+  //     <div className="p-4">
+  //       <Card>
+  //         <CardHeader>
+  //           <CardTitle>Sign in required</CardTitle>
+  //           <CardDescription>
+  //             Please sign in to start tracking your disc golf rounds.
+  //           </CardDescription>
+  //         </CardHeader>
+  //       </Card>
+  //     </div>
+  //   );
+  // }
 
   return (
-    <ErrorBoundary>
-      <div className="p-4 space-y-4">
-        <Header title="New Game" />
-        
-        {!gameState.started ? (
-          // Course Selection and Preview Section
-          <div className="space-y-4">
-            {/* Course Selection */}
-            {gameState.courses.length > 0 ? (
-              <div className="card">
-                <h2 className="text-lg font-semibold dark:text-white text-[var(--header-color)] mb-3">Search Course</h2>
-                  <input
-                    type="text"
-                    placeholder="Search for a course..."
-                    value={gameState.courseSearch || ''}
-                    onChange={(e) => gameState.setCourseSearch(e.target.value)}
-                    className="w-full p-3 border rounded bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600 text-[var(--foreground)] mb-2"
-                  />
-                
-                {/* Course Search Results */}
-                {gameState.courseSearch && (
-                  <div className="space-y-1 max-h-48 overflow-y-auto">
-                    {gameState.filteredCourses.map((course) => (
-                        <button
-                          key={course.id}
-                          onClick={() => {
-                            gameState.setCourseId(course.id);
-                            gameState.setCourseSearch('');
-                          }}
-                          className="w-full text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700 dark:text-white dark:border-gray-600 rounded border"
-                        >
-                        <div className="font-medium">{course.name}</div>
-                        <div className="text-sm text-gray-600 dark:text-gray-300">
-                          {course.holes} holes • Par {course.holePars?.reduce((sum, hole) => sum + hole.par, 0) || course.holes * 3}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="card text-center">
-                <LoadingSpinner text="Loading courses..." />
-              </div>
-            )}
-
-            {/* Course Preview */}
-            {gameState.selected && (
-              <CoursePreview
-                course={gameState.selected}
-                onStartRound={() => gameState.setShowStartModal(true)}
-                onAddLocation={addLocationData}
-              />
-            )}
-          </div>
-        ) : (
-          // Active Round Section - Single combined card
-          <div className="card">
-            {/* Top Header */}
-            <div className="text-center mb-4">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <span className="text-2xl">🥏</span>
-                <h1 className="text-xl font-bold dark:text-white text-[var(--header-color)]">
-                  {gameState.selected?.name}
-                </h1>
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-300 mt-1 flex items-center justify-center gap-4">
-                <span className="flex items-center gap-1">
-                  Hole {currentHole + 1} of {gameState.selected?.holes}
-                </span>
-                <span className="flex items-center gap-1">
-                  Par {gameState.parByHole[currentHole]}
-                </span>
-                <span className="flex items-center gap-1">
-                  {gameState.selected?.holePars?.find(h => h.hole === currentHole + 1)?.distanceMeters || 'N/A'}m
-                </span>
-              </div>
-            </div>
-            
-            {/* Action Bar */}
-            <div className="flex justify-between items-center mb-6 p-3 bg-white dark:bg-gray-800 ">
-              <button
-                onClick={() => {
-                  gameState.cancelRound();
-                  setCurrentHole(0);
-                }}
-                className="btn btn-outline bg-white dark:bg-white dark:text-black flex items-center gap-2"
-              >
-                <span>❌</span>
-                Cancel
-              </button>
-              <div className="text-center">
-                <div className="text-lg font-bold text-[var(--header-color)] flex items-center gap-2">
-                  Hole {currentHole + 1}
-                </div>
-              </div>
-              <button
-                onClick={saveRound}
-                disabled={saving}
-                className="btn btn-primary flex items-center gap-2"
-              >
-                <span>{saving ? '⏳' : '💾'}</span>
-                {saving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-
-            {/* Score VS Par Graph */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-[var(--header-color)] mb-3 flex items-center gap-2">
-                <span>📊</span>
-                Score VS Par
-              </h3>
-              <div className="w-full h-48">
-                <LineChart
-                  width={350}
-                  height={200}
-                  data={gameState.data}
-                  margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
-                >
-                  <Line type="monotone" dataKey="score" stroke="#ff6b35" strokeWidth={2} dot={{ r: 4 }} />
-                  <Line type="monotone" dataKey="par" stroke="#4ade80" strokeWidth={2} strokeDasharray="5 5" />
-                  <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
-                  <XAxis dataKey="hole" />
-                  <YAxis domain={[0, gameState.yMax]} />
-                </LineChart>
-              </div>
-              
-                  {/* Total Scores Summary */}
-                  <div className="text-center text-sm text-gray-600 dark:text-gray-300 mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded">
-                    <div className="flex justify-center items-center gap-4">
-                      <span className="flex items-center gap-1">
-                        <span>🎯</span>
-                        <strong>Total: {gameState.totals.score}</strong>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span>🏆</span>
-                        <strong>Par: {gameState.totals.par}</strong>
-                      </span>
-                      <span className={`flex items-center gap-1 ${gameState.totals.score - gameState.totals.par < 0 ? 'text-green-600' : gameState.totals.score - gameState.totals.par > 0 ? 'text-red-600' : 'text-gray-600'}`}>
-                        <span>{gameState.totals.score - gameState.totals.par < 0 ? '⬇️' : gameState.totals.score - gameState.totals.par > 0 ? '⬆️' : '➡️'}</span>
-                        <strong>VS Par: {gameState.totals.score - gameState.totals.par}</strong>
-                      </span>
-                    </div>
-                  </div>
-            </div>
-
-            {/* Score Adjustment Controls */}
-            <div className="mb-6">
-              <div className="flex justify-center items-center space-x-8 py-6 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 rounded-lg border">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('Decrement button clicked, currentHole:', currentHole);
-                    gameState.decrementScore(currentHole);
-                  }}
-                  className="w-14 h-14 rounded-full bg-green-600 flex items-center justify-center text-2xl font-bold transition-colors shadow-md"
-                >
-                  ➖
-                </button>
-                <div className="text-center">
-                  <div className="text-5xl font-bold text-[var(--header-color)] mb-2">
-                    {gameState.currentPlayer?.scores?.[currentHole] ?? gameState.parByHole[currentHole]}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-1">
-                    <span>🎯</span>
-                    Par {gameState.parByHole[currentHole]}
-                  </div>
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('Increment button clicked, currentHole:', currentHole);
-                    gameState.incrementScore(currentHole);
-                  }}
-                  className="w-14 h-14 rounded-full bg-red-500 flex items-center justify-center text-2xl font-bold transition-colors shadow-md"
-                >
-                  ➕
-                </button>
-              </div>
-            </div>
-
-            {/* Player Scores Section */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-[var(--header-color)] mb-3 flex items-center gap-2">
-                <span>👥</span>
-                Player Scores
-              </h3>
-              <div className="space-y-2">
-                {gameState.players.map((player, idx) => (
-                  <div key={player.id} className={`flex justify-between items-center p-3 rounded-lg ${idx === gameState.currentPlayerIdx ? 'bg-blue-100 dark:bg-blue-900 border-2 border-blue-300 dark:border-blue-700' : 'bg-gray-50 dark:bg-gray-700 dark:border-gray-600 border'}`}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{idx === gameState.currentPlayerIdx ? '🎯' : '👤'}</span>
-                      <span className="font-medium text-[var(--foreground)]">{player.name}</span>
-                      {idx === gameState.currentPlayerIdx && <span className="text-xs bg-blue-200 dark:bg-blue-800 px-2 py-1 rounded-full">Current</span>}
-                    </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                      <span className="flex items-center gap-1">
-                        <span>🎯</span>
-                        {gameState.totals.score}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span>🏆</span>
-                        Par {gameState.totals.par}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Bottom Navigation */}
-            <div className="flex justify-between gap-2">
-              <button
-                onClick={() => setCurrentHole(Math.max(0, currentHole - 1))}
-                disabled={currentHole === 0}
-                className="btn btn-outline bg-white dark:bg-white dark:text-black flex-1 flex items-center justify-center gap-2"
-              >
-                <span>⬅️</span>
-                Previous
-              </button>
-              <div className="flex items-center justify-center px-4 py-2 bg-gray-100 dark:bg-gray-700 dark:border-gray-600 rounded-lg border">
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                  {currentHole + 1} / {gameState.selected?.holes || 18}
-                </span>
-              </div>
-              <button
-                onClick={() => setCurrentHole(Math.min((gameState.selected?.holes || 18) - 1, currentHole + 1))}
-                disabled={currentHole === (gameState.selected?.holes || 18) - 1}
-                className="btn btn-outline bg-white dark:bg-white dark:text-black flex-1 flex items-center justify-center gap-2"
-              >
-                Next
-                <span>➡️</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Start Round Modal */}
-        <StartRoundModal
-          isOpen={gameState.showStartModal}
-          onClose={() => gameState.setShowStartModal(false)}
-          onStart={handleStartRound}
-          friends={friendsState.friends}
-          selectedFriends={friendsState.selectedFriends}
-          onToggleFriend={friendsState.toggleFriend}
-          searchResults={friendsState.searchResults}
-          userSearch={friendsState.userSearch}
-          onUserSearchChange={friendsState.setUserSearch}
-          onAddPlayer={(user) => {
-            const newPlayer = {
-              id: user.id,
-              name: user.name,
-              email: user.email,
-              scores: []
-            };
-            // Add to selected players logic would go here
-          }}
-          searching={friendsState.searching}
-          searchError={friendsState.searchError}
-          selectedCourse={gameState.selected}
-          onFetchWeather={gameState.fetchWeather}
-          loadingWeather={gameState.loadingWeather}
-          weather={gameState.weather}
-          setWeather={gameState.setWeather}
-        />
+    <div className="p-4 space-y-6 snap-start">
+      <div>
+        <h1 className="text-3xl font-bold text-[var(--foreground)]">New Round</h1>
+        <p className="text-[var(--muted-foreground)]">
+          Start tracking a new disc golf round
+        </p>
       </div>
-    </ErrorBoundary>
+
+      {/* Debug info */}
+      <div className="p-4 bg-gray-100 rounded-lg text-sm">
+        <p><strong>Debug Info:</strong></p>
+        <p>Courses: {courses === undefined ? 'Loading...' : courses === null ? 'Error' : `${courses.length} courses loaded`}</p>
+        <p>User: {user ? 'Authenticated' : 'Not authenticated'}</p>
+        <p>CurrentUser: {currentUser === undefined ? 'Loading...' : currentUser === null ? 'Not found in DB' : 'Found in DB'}</p>
+        <p>Participants: {participants.length}</p>
+        <div className="mt-2">
+          <Button 
+            onClick={() => toast({
+              title: "Test Toast",
+              description: "This is a test toast notification.",
+            })}
+            size="sm"
+          >
+            Test Toast
+          </Button>
+        </div>
+      </div>
+
+      {/* Round Type Selection */}
+      <Card className="snap-start">
+        <CardHeader>
+          <CardTitle>Round Type</CardTitle>
+          <CardDescription>
+            Choose the type of round you're playing
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Select value={roundType} onValueChange={setRoundType}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select round type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="CASUAL">Casual</SelectItem>
+              <SelectItem value="PRACTICE">Practice</SelectItem>
+              <SelectItem value="TOURNAMENT">Tournament</SelectItem>
+              <SelectItem value="COMPETITIVE">Competitive</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
+      {/* Course Selection */}
+      {!selectedCourse ? (
+        <Card className="snap-start">
+          <CardHeader>
+            <CardTitle>Select Course</CardTitle>
+            <CardDescription>
+              Choose a course to start your round
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="max-h-96 overflow-y-auto snap-y snap-mandatory space-y-2">
+              {courses?.map((course) => (
+                <div
+                  key={course._id}
+                  className="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors snap-start"
+                  onClick={() => setSelectedCourse(course._id)}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-semibold">{course.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {course.holes} holes • {course.location}
+                      </p>
+                      {course.description && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {course.description}
+                        </p>
+                      )}
+                    </div>
+                    <Badge variant="secondary">
+                      {course.holes} holes
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {/* Selected Course Info */}
+          <Card className="snap-start">
+            <CardHeader>
+              <CardTitle className="flex justify-between items-center">
+                <span>{selectedCourseData?.name}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedCourse(null)}
+                >
+                  Change Course
+                </Button>
+              </CardTitle>
+              <CardDescription>
+                {selectedCourseData?.holes} holes • {selectedCourseData?.location}
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          {/* Friend/Player Selection */}
+          <FriendSelector 
+            participants={participants}
+            onParticipantsChange={setParticipants}
+          />
+
+          {/* Score Input */}
+          {courseHoles && (
+            <div className="snap-start">
+              <MultiPlayerScoreInput
+                participants={participants}
+                courseHoles={courseHoles}
+                onScoresChange={handleScoresChange}
+                onRoundComplete={handleRoundComplete}
+              />
+            </div>
+          )}
+
+          {/* Round Status Message */}
+          {courseHoles && !isRoundComplete && (
+            <Card className="snap-start">
+              <CardContent className="pt-6">
+                <div className="text-center space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Complete all holes to save your round
+                  </p>
+                  <div className="text-xs text-muted-foreground">
+                    Navigate through all holes and enter scores for all players
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Save Round - Only show when round is complete */}
+          {courseHoles && isRoundComplete && (
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="w-full" size="lg">
+                  {participants.length === 0 ? 'Save Round' : `Save Group Round (${participants.length + 1} players)`}
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Save Round</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to save this round? This action cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsDialogOpen(false)}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSaveRound} disabled={isSaving}>
+                    {isSaving ? "Saving..." : "Save Round"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

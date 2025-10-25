@@ -1,349 +1,233 @@
 "use client";
-import { useEffect, useState } from "react";
-import { formatDateEuropean } from "@/lib/dateUtils";
 
-type Achievement = {
-  id: string;
-  name: string;
-  description: string;
-  icon?: string;
-  category: string;
-  criteria: string;
-  points: number;
-};
-
-type UserAchievement = {
-  id: string;
-  earnedAt: string;
-  achievement: Achievement;
-};
-
-type Goal = {
-  id: string;
-  title: string;
-  description?: string;
-  type: string;
-  target: number;
-  current: number;
-  deadline?: string;
-  completed: boolean;
-  createdAt: string;
-};
+import { useUser } from '@clerk/nextjs';
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 
 export default function ProgressPage() {
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
-  const [userAchievements, setUserAchievements] = useState<UserAchievement[]>([]);
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [showGoalForm, setShowGoalForm] = useState(false);
-  const [newGoal, setNewGoal] = useState({
-    title: '',
-    description: '',
-    type: 'ROUNDS',
-    target: 0,
-    deadline: ''
-  });
-  const [activeTab, setActiveTab] = useState<'achievements' | 'goals'>('achievements');
+  const { user } = useUser();
+  
+  const currentUser = useQuery(api.users.getCurrentUser, 
+    user ? { clerkId: user.id } : "skip"
+  );
+  
+  const rounds = useQuery(api.rounds.getByUser, 
+    currentUser ? { userId: currentUser._id } : "skip"
+  );
+  const analytics = useQuery(api.stats.getAnalytics, 
+    currentUser ? { userId: currentUser._id } : "skip"
+  );
 
-  useEffect(() => {
-    fetchAchievements();
-    fetchGoals();
-  }, []);
+  // Temporarily disabled for testing
+  // if (!user || !currentUser) {
+  //   return (
+  //     <div className="p-4">
+  //       <Card>
+  //         <CardTitle>Sign in required</CardTitle>
+  //         <CardDescription>
+  //           Please sign in to view your progress.
+  //         </CardDescription>
+  //       </Card>
+  //     </div>
+  //   );
+  // }
 
-  const fetchAchievements = async () => {
-    try {
-      const res = await fetch('/api/achievements');
-      const data = await res.json();
-      // Combine earned and available achievements
-      const allAchievements = [...(data.earned || []).map((ua: any) => ua.achievement), ...(data.available || [])];
-      setAchievements(allAchievements);
-      setUserAchievements(data.earned || []);
-    } catch (error) {
-      console.error('Failed to fetch achievements:', error);
-    }
-  };
+  const totalRounds = rounds?.length || 0;
+  const totalStrokes = rounds?.reduce((sum, round) => sum + (round.totalStrokes || 0), 0) || 0;
+  const averageScore = totalRounds > 0 ? (totalStrokes / totalRounds) : 0;
+  const uniqueCourses = new Set(rounds?.map(round => round.courseId)).size || 0;
 
-  const fetchUserAchievements = async () => {
-    // This is now handled in fetchAchievements
-  };
+  // Calculate monthly progress
+  const monthlyRounds = rounds?.filter(round => {
+    const roundDate = new Date(round.startedAt);
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    return roundDate.getMonth() === currentMonth && roundDate.getFullYear() === currentYear;
+  }).length || 0;
 
-  const fetchGoals = async () => {
-    try {
-      const res = await fetch('/api/goals');
-      const data = await res.json();
-      setGoals(data.goals || []);
-    } catch (error) {
-      console.error('Failed to fetch goals:', error);
-    }
-  };
-
-  const createGoal = async () => {
-    try {
-      const res = await fetch('/api/goals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newGoal)
-      });
-      if (res.ok) {
-        fetchGoals();
-        setShowGoalForm(false);
-        setNewGoal({ title: '', description: '', type: 'ROUNDS', target: 0, deadline: '' });
-      }
-    } catch (error) {
-      console.error('Failed to create goal:', error);
-    }
-  };
-
-  const updateGoal = async (id: string, current: number, completed: boolean) => {
-    const res = await fetch('/api/goals', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, current, completed })
-    });
-    if (res.ok) {
-      fetchGoals();
-    }
-  };
-
-  const earnedAchievementIds = new Set(userAchievements.map(ua => ua.achievement.id));
+  const monthlyGoal = 10; // Example goal
+  const monthlyProgress = Math.min((monthlyRounds / monthlyGoal) * 100, 100);
 
   return (
-    <main className="p-4 space-y-4">
-      <h1 className="text-2xl font-bold text-[var(--header-color)]">Progress</h1>
-      
-      {/* Tab Navigation */}
-      <div className="flex gap-2">
-        <button
-          className={`px-4 py-2 rounded-lg ${
-            activeTab === 'achievements'
-              ? 'bg-[var(--color-brand)] text-[#002F45]'
-              : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white'
-          }`}
-          onClick={() => setActiveTab('achievements')}
-        >
-          🏆 Achievements
-        </button>
-        <button
-          className={`px-4 py-2 rounded-lg ${
-            activeTab === 'goals'
-              ? 'bg-[var(--color-brand)] text-[#002F45]'
-              : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white'
-          }`}
-          onClick={() => setActiveTab('goals')}
-        >
-          🎯 Goals
-        </button>
+    <div className="p-4 space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-[var(--foreground)]">Progress & Goals</h1>
+        <p className="text-[var(--muted-foreground)]">
+          Track your disc golf journey and achievements
+        </p>
       </div>
 
-      {/* Achievements Tab */}
-      {activeTab === 'achievements' && (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold">Achievements</h2>
-            <div className="text-sm text-gray-600 dark:text-white">
-              {userAchievements.length} / {achievements.length} earned
-            </div>
+      {/* Monthly Progress */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Monthly Goal</CardTitle>
+          <CardDescription>
+            Rounds played this month: {monthlyRounds} / {monthlyGoal}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Progress value={monthlyProgress} className="w-full" />
+          <div className="mt-2 text-sm text-muted-foreground">
+            {monthlyProgress.toFixed(0)}% complete
           </div>
+        </CardContent>
+      </Card>
 
-          <div className="grid gap-3">
-            {achievements.length === 0 ? (
-              <div className="card text-center py-8">
-                <div className="text-gray-600 dark:text-white">No achievements available yet.</div>
-              </div>
-            ) : (
-              achievements.map((achievement) => {
-              const userAchievement = userAchievements.find(ua => ua.achievement.id === achievement.id);
-              const isEarned = !!userAchievement;
-              
-              return (
+      {/* Overall Stats */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Rounds
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalRounds}</div>
+            <div className="text-xs text-muted-foreground">
+              All time
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Average Score
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{averageScore.toFixed(1)}</div>
+            <div className="text-xs text-muted-foreground">
+              Per round
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Courses Played
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{uniqueCourses}</div>
+            <div className="text-xs text-muted-foreground">
+              Unique courses
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              This Month
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{monthlyRounds}</div>
+            <div className="text-xs text-muted-foreground">
+              Rounds played
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Round Types Breakdown */}
+      {rounds && rounds.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Round Types</CardTitle>
+            <CardDescription>
+              Breakdown of your rounds by type
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {Object.entries(
+                rounds.reduce((acc, round) => {
+                  acc[round.roundType] = (acc[round.roundType] || 0) + 1;
+                  return acc;
+                }, {} as Record<string, number>)
+              ).map(([type, count]) => {
+                const percentage = (count / totalRounds) * 100;
+                return (
+                  <div key={type} className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <Badge variant="secondary">{type}</Badge>
+                      <span className="text-sm font-medium">{count} rounds</span>
+                    </div>
+                    <Progress value={percentage} className="h-2" />
+                    <div className="text-xs text-muted-foreground">
+                      {percentage.toFixed(1)}% of total rounds
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent Activity */}
+      {rounds && rounds.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+            <CardDescription>
+              Your latest disc golf rounds
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {rounds.slice(0, 5).map((round) => (
                 <div
-                  key={achievement.id}
-                  className={`card ${
-                    isEarned 
-                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
-                      : 'bg-gray-50 dark:bg-gray-800'
-                  }`}
+                  key={round._id}
+                  className="flex items-center justify-between p-3 border rounded-lg"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="text-2xl">
-                      {isEarned ? achievement.icon || '🏆' : '🔒'}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <h3 className={`font-semibold ${isEarned ? 'text-green-800 dark:text-green-200' : 'text-gray-600 dark:text-gray-400'}`}>
-                          {achievement.name}
-                        </h3>
-                        <span className="text-sm font-bold text-[var(--color-brand)]">
-                          {achievement.points} pts
-                        </span>
+                  <div className="flex items-center gap-3">
+                    <div className="text-2xl">🥏</div>
+                    <div>
+                      <div className="font-medium">
+                        {round.course?.name || 'Unknown Course'}
                       </div>
-                      <p className={`text-sm mt-1 ${isEarned ? 'text-green-700 dark:text-green-300' : 'text-gray-500 dark:text-gray-500'}`}>
-                        {achievement.description}
-                      </p>
-                      {isEarned && (
-                        <div className="flex justify-between items-center mt-2">
-                          <span className="text-xs text-green-600 dark:text-green-400">
-                            Earned {formatDateEuropean(userAchievement.earnedAt)}
-                          </span>
-                          <span className="text-sm font-bold text-green-600 dark:text-green-400">
-                            +{achievement.points} pts
-                          </span>
-                        </div>
-                      )}
+                      <div className="text-sm text-muted-foreground">
+                        {new Date(round.startedAt).toLocaleDateString()} • {round.roundType}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Goals Tab */}
-      {activeTab === 'goals' && (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold">Goals</h2>
-            <button
-              className="btn btn-primary text-sm"
-              onClick={() => setShowGoalForm(true)}
-            >
-              + New Goal
-            </button>
-          </div>
-
-          {/* New Goal Form */}
-          {showGoalForm && (
-            <div className="card">
-              <h3 className="font-semibold mb-3">Create New Goal</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-sm font-medium">Title</label>
-                  <input
-                    className="w-full border rounded p-2 bg-white dark:bg-white dark:text-black"
-                    value={newGoal.title}
-                    onChange={(e) => setNewGoal(prev => ({...prev, title: e.target.value}))}
-                    placeholder="e.g., Play 10 rounds this month"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Description (Optional)</label>
-                  <input
-                    className="w-full border rounded p-2 bg-white dark:bg-white dark:text-black"
-                    value={newGoal.description}
-                    onChange={(e) => setNewGoal(prev => ({...prev, description: e.target.value}))}
-                    placeholder="Additional details..."
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-sm font-medium">Type</label>
-                    <select
-                      className="w-full border rounded p-2 bg-white dark:bg-white dark:text-black"
-                      value={newGoal.type}
-                      onChange={(e) => setNewGoal(prev => ({...prev, type: e.target.value}))}
-                    >
-                      <option value="ROUNDS">Rounds</option>
-                      <option value="SCORE">Score</option>
-                      <option value="COURSES">Courses</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Target</label>
-                    <input
-                      type="number"
-                      className="w-full border rounded p-2 bg-white dark:bg-white dark:text-black"
-                      value={newGoal.target}
-                      onChange={(e) => setNewGoal(prev => ({...prev, target: parseInt(e.target.value) || 0}))}
-                    />
+                  <div className="text-right">
+                    <div className="text-lg font-bold">
+                      {round.totalStrokes || 'N/A'}
+                    </div>
+                    <div className="text-xs text-muted-foreground">strokes</div>
                   </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Deadline (Optional)</label>
-                  <input
-                    type="date"
-                    className="w-full border rounded p-2 bg-white dark:bg-white dark:text-black"
-                    value={newGoal.deadline}
-                    onChange={(e) => setNewGoal(prev => ({...prev, deadline: e.target.value}))}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <button className="btn btn-primary" onClick={createGoal}>
-                    Create Goal
-                  </button>
-                  <button 
-                    className="btn btn-outline" 
-                    onClick={() => setShowGoalForm(false)}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
+              ))}
             </div>
-          )}
-
-          {/* Goals List */}
-          <div className="space-y-3">
-            {goals.length === 0 ? (
-              <div className="card text-center py-8">
-                <div className="text-gray-600 dark:text-white">No goals created yet. Create your first goal above!</div>
-              </div>
-            ) : (
-              goals.map((goal) => (
-              <div key={goal.id} className={`card ${goal.completed ? 'bg-green-50 dark:bg-green-900/20' : ''}`}>
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{goal.title}</h3>
-                      {goal.completed && <span className="text-green-600">✅</span>}
-                    </div>
-                    {goal.description && (
-                      <p className="text-sm text-gray-600 dark:text-white mt-1">{goal.description}</p>
-                    )}
-                    <div className="mt-2">
-                      <div className="flex justify-between text-sm text-gray-600 dark:text-white">
-                        <span>Progress: {goal.current} / {goal.target}</span>
-                        <span>{Math.round((goal.current / goal.target) * 100)}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
-                        <div 
-                          className="bg-[var(--color-brand)] h-2 rounded-full transition-all"
-                          style={{ width: `${Math.min((goal.current / goal.target) * 100, 100)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    {goal.deadline && (
-                      <div className="text-xs text-gray-600 dark:text-white mt-2">
-                        Deadline: {formatDateEuropean(goal.deadline)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-1 ml-2">
-                    <input
-                      type="number"
-                      className="flex-1 border rounded p-2 text-sm bg-white dark:bg-white dark:text-black"
-                      placeholder="Update progress"
-                      onChange={(e) => {
-                        const value = parseFloat(e.target.value);
-                        if (!isNaN(value)) {
-                          updateGoal(goal.id, value, value >= goal.target);
-                        }
-                      }}
-                    />
-                    <button
-                      className="btn btn-outline text-sm"
-                      onClick={() => updateGoal(goal.id, goal.current, !goal.completed)}
-                    >
-                      {goal.completed ? 'Mark Incomplete' : 'Mark Complete'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))
-            )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
-    </main>
+
+      {/* Achievements Placeholder */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Achievements</CardTitle>
+          <CardDescription>
+            Unlock achievements as you play
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            <div className="text-4xl mb-2">🏆</div>
+            <p>Achievements coming soon!</p>
+            <p className="text-sm">Complete rounds and reach milestones to unlock badges.</p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

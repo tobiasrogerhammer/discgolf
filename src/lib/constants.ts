@@ -1,18 +1,3 @@
-// API endpoints
-export const API_ENDPOINTS = {
-  COURSES: '/api/courses',
-  ROUNDS: '/api/rounds',
-  STATS: '/api/stats',
-  FRIENDS: '/api/friends',
-  WEATHER: '/api/weather',
-  ACHIEVEMENTS: '/api/achievements',
-  GOALS: '/api/goals',
-  EXPORT: '/api/export',
-  ANALYTICS: '/api/analytics',
-  LEADERBOARD: '/api/leaderboard',
-  USERS_CHECK: '/api/users/check',
-} as const;
-
 // Round types
 export const ROUND_TYPES = {
   CASUAL: 'CASUAL',
@@ -43,57 +28,6 @@ export const WIND_DIRECTIONS = {
   NW: 'Northwest',
 } as const;
 
-// Ekeberg rating table
-export const EKEBERG_RATINGS = {
-  54: 1000,
-  55: 990,
-  56: 980,
-  57: 970,
-  58: 960,
-  59: 950,
-  60: 940,
-  61: 930,
-  62: 920,
-  63: 910,
-  64: 900,
-  65: 890,
-  66: 880,
-  67: 870,
-  68: 860,
-  69: 850,
-  70: 840,
-  71: 830,
-  72: 820,
-  73: 810,
-  74: 800,
-  75: 790,
-  76: 780,
-  77: 770,
-  78: 760,
-  79: 750,
-  80: 740,
-  81: 730,
-  82: 720,
-  83: 710,
-  84: 700,
-  85: 690,
-  86: 680,
-  87: 670,
-  88: 660,
-  89: 650,
-  90: 640,
-  91: 630,
-  92: 620,
-  93: 610,
-  94: 600,
-  95: 590,
-  96: 580,
-  97: 570,
-  98: 560,
-  99: 550,
-  100: 540,
-} as const;
-
 // Chart configurations
 export const CHART_CONFIG = {
   COLORS: {
@@ -111,27 +45,6 @@ export const UI_CONSTANTS = {
   MAX_SEARCH_RESULTS: 10,
   DEBOUNCE_DELAY: 300,
   UPDATE_DEBOUNCE: 50,
-} as const;
-
-// Error messages
-export const ERROR_MESSAGES = {
-  UNAUTHORIZED: 'Unauthorized',
-  USER_NOT_FOUND: 'User not found',
-  COURSE_NOT_FOUND: 'Course not found',
-  ROUND_NOT_FOUND: 'Round not found',
-  FRIEND_REQUEST_FAILED: 'Failed to send friend request',
-  WEATHER_FETCH_FAILED: 'Failed to fetch weather data',
-  SEARCH_FAILED: 'Search failed',
-  SAVE_FAILED: 'Failed to save round',
-  NETWORK_ERROR: 'Network error. Please check your connection.',
-} as const;
-
-// Success messages
-export const SUCCESS_MESSAGES = {
-  ROUND_SAVED: 'Round saved successfully!',
-  FRIEND_REQUEST_SENT: 'Friend request sent!',
-  FRIEND_REQUEST_ACCEPTED: 'Friend request accepted!',
-  WEATHER_FETCHED: 'Weather data fetched successfully!',
 } as const;
 
 // Default values
