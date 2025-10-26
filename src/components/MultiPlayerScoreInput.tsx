@@ -27,13 +27,15 @@ interface MultiPlayerScoreInputProps {
   courseHoles: any[];
   onScoresChange: (scores: ScoreData) => void;
   onRoundComplete?: (isComplete: boolean) => void;
+  onCurrentHoleChange?: (currentHole: number) => void;
 }
 
 export function MultiPlayerScoreInput({ 
   participants, 
   courseHoles, 
   onScoresChange,
-  onRoundComplete
+  onRoundComplete,
+  onCurrentHoleChange
 }: MultiPlayerScoreInputProps) {
   const [currentHole, setCurrentHole] = useState(0);
   const [scores, setScores] = useState<ScoreData>(() => {
@@ -56,6 +58,11 @@ export function MultiPlayerScoreInput({
 
   const currentPar = courseHoles?.find(h => h.hole === currentHole + 1)?.par || 3;
   const totalHoles = courseHoles?.length || 18;
+
+  // Notify parent of current hole changes
+  useEffect(() => {
+    onCurrentHoleChange?.(currentHole + 1); // Convert to 1-based for parent
+  }, [currentHole, onCurrentHoleChange]);
 
   const handleScoreChange = (participantId: string, hole: number, newScore: number) => {
     const newScores = {
@@ -119,15 +126,15 @@ export function MultiPlayerScoreInput({
     const isOverPar = currentScore > currentPar;
 
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <Button
           variant="outline"
-          size="sm"
+          size="lg"
           onClick={() => decrementScore(participantId, hole)}
           disabled={currentScore <= 1}
-          className="h-10 w-10 p-0"
+          className="h-12 w-12 p-0 border-2 hover:bg-red-50"
         >
-          <Minus className="h-4 w-4" />
+          <Minus className="h-5 w-5" />
         </Button>
         
         <div className="flex-1">
@@ -136,67 +143,93 @@ export function MultiPlayerScoreInput({
             placeholder="Strokes"
             value={currentScore}
             onChange={(e) => handleScoreChange(participantId, hole, parseInt(e.target.value) || 1)}
-            className={`text-center text-lg py-2 ${
-              isPar ? 'border-blue-300 bg-blue-50' :
-              isUnderPar ? 'border-green-300 bg-green-50' :
-              isOverPar ? 'border-red-300 bg-red-50' : ''
+            className={`text-center text-2xl font-bold py-3 border-2 ${
+              isPar ? 'border-blue-400 bg-blue-50 text-blue-700' :
+              isUnderPar ? 'border-green-400 bg-green-50 text-green-700' :
+              isOverPar ? 'border-red-400 bg-red-50 text-red-700' : 'border-gray-300'
             }`}
             min="1"
             max="20"
           />
-          <div className="text-xs text-center mt-1 text-muted-foreground">
-            {isPar ? 'Par' : isUnderPar ? `${currentPar - currentScore} under` : `${currentScore - currentPar} over`}
+          <div className="text-sm text-center mt-2 font-medium">
+            {isPar ? '🎯 Par' : isUnderPar ? `🦅 ${currentPar - currentScore} under` : `📈 ${currentScore - currentPar} over`}
           </div>
         </div>
         
         <Button
           variant="outline"
-          size="sm"
+          size="lg"
           onClick={() => incrementScore(participantId, hole)}
           disabled={currentScore >= 20}
-          className="h-10 w-10 p-0"
+          className="h-12 w-12 p-0 border-2 hover:bg-green-50"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-5 w-5" />
         </Button>
       </div>
     );
   };
 
+  const currentHoleData = courseHoles?.find(h => h.hole === currentHole + 1);
+  const currentDistance = currentHoleData?.distanceMeters || 0;
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Score Input</CardTitle>
-        <CardDescription>
-          Hole {currentHole + 1} of {totalHoles} • Par {currentPar}
+    <Card className="shadow-lg border-2">
+      <CardHeader className="pb-4 text-center">
+        <CardTitle className="text-xl">Score Input</CardTitle>
+        <CardDescription className="text-base">
+          Hole {currentHole + 1} of {totalHoles}
           {isSoloPlay && " • Solo Round"}
         </CardDescription>
       </CardHeader>
-          <CardContent className="space-y-4 snap-start">
+      <CardContent className="space-y-6">
+        {/* Hole Details - Enhanced */}
+        <div className="bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl p-6 border-2">
+          <div className="flex items-center justify-between">
+            <div className="text-center flex-1">
+              <div className="text-4xl font-bold text-primary">Hole {currentHole + 1}</div>
+              <div className="text-sm text-muted-foreground mt-1">Current Hole</div>
+            </div>
+            <div className="text-center flex-1">
+              <div className="text-3xl font-bold text-green-600">Par {currentPar}</div>
+              <div className="text-sm text-muted-foreground mt-1">Target Score</div>
+            </div>
+            <div className="text-center flex-1">
+              <div className="text-3xl font-bold text-blue-600">
+                {currentDistance > 0 ? `${currentDistance}m` : 'N/A'}
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">Distance</div>
+            </div>
+          </div>
+        </div>
+
         {/* Hole Navigation */}
         <div className="flex justify-between items-center">
           <Button
             onClick={() => setCurrentHole(prev => Math.max(0, prev - 1))}
             disabled={currentHole === 0}
             variant="outline"
+            size="sm"
+            className="h-10"
           >
             Previous
           </Button>
           <div className="text-center">
-            <div className="text-2xl font-bold">Hole {currentHole + 1}</div>
-            <div className="text-sm text-muted-foreground">Par {currentPar}</div>
+            <div className="text-sm text-muted-foreground">Navigate Holes</div>
           </div>
           <Button
             onClick={() => setCurrentHole(prev => Math.min(totalHoles - 1, prev + 1))}
             disabled={currentHole === totalHoles - 1}
+            size="sm"
+            className="h-10"
           >
             Next
           </Button>
         </div>
 
         {/* Score Inputs */}
-            <div className="space-y-3 snap-y snap-mandatory">
+        <div className="space-y-4">
           {/* Main player (you) */}
-          <div className="p-3 border rounded-lg bg-primary/5 snap-start">
+          <div className="p-4 border-2 rounded-xl bg-gradient-to-r from-primary/10 to-primary/5 shadow-md">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4" />
@@ -214,7 +247,7 @@ export function MultiPlayerScoreInput({
 
           {/* Other participants (only show if not solo play) */}
           {!isSoloPlay && participants.map((participant) => (
-                <div key={participant.id} className="p-3 border rounded-lg snap-start">
+            <div key={participant.id} className="p-4 border-2 rounded-xl bg-gradient-to-r from-accent/10 to-accent/5 shadow-md">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   {participant.type === 'user' ? (

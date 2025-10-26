@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 
 export const createGroupRound = mutation({
@@ -92,6 +93,34 @@ export const createGroupRound = mutation({
       }
     }
 
+    // Check for achievements for all participants after group round completion
+    const uniqueUserIds = new Set(
+      args.participants
+        .map(p => p.userId)
+        .filter(Boolean)
+    );
+
+    for (const userId of uniqueUserIds) {
+      try {
+        await ctx.runMutation(internal.achievements.checkAchievements, {
+          userId: userId as any,
+        });
+      } catch (error) {
+        console.error(`Error checking achievements for user ${userId} after group round:`, error);
+        // Don't fail the group round creation if achievement checking fails
+      }
+
+      try {
+        await ctx.runMutation(internal.goals.updateProgress, {
+          userId: userId as any,
+          goalType: "ROUNDS_PLAYED",
+        });
+      } catch (error) {
+        console.error(`Error updating goal progress for user ${userId} after group round:`, error);
+        // Don't fail the group round creation if goal updating fails
+      }
+    }
+
     return {
       groupRoundId,
       roundIds,
@@ -182,3 +211,4 @@ export const getGroupRoundsByUser = query({
     return groupRoundsWithDetails;
   },
 });
+

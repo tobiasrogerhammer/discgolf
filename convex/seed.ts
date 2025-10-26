@@ -129,3 +129,4 @@ export const seedCourses = mutation({
     return { courses: [course1, course2, course3] };
   },
 });
+

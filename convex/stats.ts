@@ -119,17 +119,54 @@ export const getAnalytics = query({
 });
 
 export const getLeaderboard = query({
-  args: { timePeriod: v.optional(v.string()) },
+  args: { 
+    timePeriod: v.optional(v.string()),
+    courseId: v.optional(v.id("courses")),
+    friendsOnly: v.optional(v.boolean()),
+    userId: v.optional(v.id("users"))
+  },
   handler: async (ctx, args) => {
-    const users = await ctx.db.query("users").collect();
+    let users = await ctx.db.query("users").collect();
+    
+    // Filter to friends only if requested
+    if (args.friendsOnly && args.userId) {
+      const friendships = await ctx.db
+        .query("friendships")
+        .withIndex("by_requester", (q) => q.eq("requesterId", args.userId))
+        .filter((q) => q.eq(q.field("status"), "ACCEPTED"))
+        .collect();
+
+      const friendshipsAsAddressee = await ctx.db
+        .query("friendships")
+        .withIndex("by_addressee", (q) => q.eq("addresseeId", args.userId))
+        .filter((q) => q.eq(q.field("status"), "ACCEPTED"))
+        .collect();
+
+      const allFriendships = [...friendships, ...friendshipsAsAddressee];
+      const friendIds = new Set(
+        allFriendships.map(friendship => 
+          friendship.requesterId === args.userId 
+            ? friendship.addresseeId 
+            : friendship.requesterId
+        )
+      );
+      friendIds.add(args.userId); // Include current user
+      
+      users = users.filter(user => friendIds.has(user._id));
+    }
     
     const leaderboard = await Promise.all(
       users.map(async (user) => {
-        const rounds = await ctx.db
+        let rounds = await ctx.db
           .query("rounds")
           .withIndex("by_user", (q) => q.eq("userId", user._id))
           .filter((q) => q.eq(q.field("completed"), true))
           .collect();
+
+        // Filter by course if specified
+        if (args.courseId) {
+          rounds = rounds.filter(round => round.courseId === args.courseId);
+        }
 
         if (rounds.length === 0) return null;
 
@@ -152,4 +189,5 @@ export const getLeaderboard = query({
       .sort((a, b) => a!.averageScore - b!.averageScore);
   },
 });
+
 

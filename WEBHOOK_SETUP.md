@@ -57,6 +57,12 @@ When a user is deleted, the following data is automatically removed:
 - ✅ **All round participants** for those rounds
 - ✅ **All friendships** (both sent and received)
 - ✅ **All group rounds** created by the user
+- ✅ **All user achievements** (`userAchievements` table)
+- ✅ **All user goals** (`goals` table)
+- ✅ **All favorite courses** (`favoriteCourses` table)
+- ✅ **All activities** (`activities` table)
+- ✅ **All round notes** (`roundNotes` table)
+- ✅ **All course leaderboard entries** (`courseLeaderboards` table)
 
 ### Manual Cleanup
 
@@ -147,3 +153,4 @@ Check that the user and all related data are removed from Convex:
 3. **Deploy to production** with confidence
 4. **Monitor webhook delivery** in Clerk Dashboard
 5. **Set up alerts** for webhook failures if needed
+

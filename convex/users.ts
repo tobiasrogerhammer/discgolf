@@ -259,7 +259,67 @@ export const deleteUser = mutation({
       await ctx.db.delete(groupRound._id);
     }
 
-    // 4. Finally, delete the user
+    // 4. Delete user's achievements
+    const userAchievements = await ctx.db
+      .query("userAchievements")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    for (const achievement of userAchievements) {
+      await ctx.db.delete(achievement._id);
+    }
+
+    // 5. Delete user's goals
+    const userGoals = await ctx.db
+      .query("goals")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    for (const goal of userGoals) {
+      await ctx.db.delete(goal._id);
+    }
+
+    // 6. Delete user's favorite courses
+    const favoriteCourses = await ctx.db
+      .query("favoriteCourses")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    for (const favorite of favoriteCourses) {
+      await ctx.db.delete(favorite._id);
+    }
+
+    // 7. Delete user's activities
+    const activities = await ctx.db
+      .query("activities")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    for (const activity of activities) {
+      await ctx.db.delete(activity._id);
+    }
+
+    // 8. Delete user's round notes
+    const roundNotes = await ctx.db
+      .query("roundNotes")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    for (const note of roundNotes) {
+      await ctx.db.delete(note._id);
+    }
+
+    // 9. Delete user's course leaderboard entries
+    const courseLeaderboards = await ctx.db
+      .query("courseLeaderboards")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    for (const leaderboard of courseLeaderboards) {
+      await ctx.db.delete(leaderboard._id);
+    }
+
+    // 10. Finally, delete the user
     await ctx.db.delete(user._id);
 
     return { deleted: true, userId: user._id };

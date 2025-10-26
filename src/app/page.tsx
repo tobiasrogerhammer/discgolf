@@ -26,102 +26,146 @@ export default function Home() {
 
   if (!user) {
     return (
-      <main className="p-4 space-y-4">
-        <h1 className="text-3xl font-bold text-[var(--foreground)]">DiscGolf Tracker</h1>
-        <p className="text-[var(--muted-foreground)]">
-          Track your disc golf rounds and improve your game
-        </p>
-        <div className="grid grid-cols-1 gap-3">
-          <Link href="/login">
-            <Button className="w-full">Sign In</Button>
-          </Link>
-          <Link href="/register">
-            <Button variant="outline" className="w-full">Sign Up</Button>
-          </Link>
+      <main className="h-dvh flex flex-col items-center justify-center p-6 bg-background overflow-hidden">
+        <div className="w-full max-w-md space-y-8 text-center">
+          {/* Logo */}
+          <div className="flex justify-center">
+            <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center">
+              <span className="text-3xl">🥏</span>
+            </div>
+          </div>
+
+          {/* Title */}
+          <div className="space-y-3">
+            <h1 className="text-4xl font-bold text-foreground">
+              DiscGolf Tracker
+            </h1>
+            <p className="text-muted-foreground">
+              Track your rounds and improve your game
+            </p>
+          </div>
+
+          {/* Features */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span className="text-lg">📊</span>
+              <span>Smart analytics and insights</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span className="text-lg">🎯</span>
+              <span>AI caddy assistant</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span className="text-lg">👥</span>
+              <span>Compete with friends</span>
+            </div>
+          </div>
+
+          {/* CTA Buttons */}
+          <div className="space-y-3">
+            <Link href="/login" className="block">
+              <Button className="w-full h-11">
+                Sign In
+              </Button>
+            </Link>
+            <Link href="/register" className="block">
+              <Button variant="outline" className="w-full h-11">
+                Create Account
+              </Button>
+            </Link>
+          </div>
+
+          {/* Trust Indicators */}
+          <div className="text-xs text-muted-foreground">
+            Free • Secure • Mobile-friendly
+          </div>
         </div>
       </main>
     )
   }
 
   return (
-    <main className="p-4 space-y-6 snap-start">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-[var(--foreground)]">
-            Welcome back{currentUser?.name ? `, ${currentUser.name}` : ''}!
-          </h1>
-          <p className="text-[var(--muted-foreground)]">
-            Ready to play some disc golf?
-          </p>
+    <main className="h-dvh flex flex-col p-4 bg-background">
+      {/* Header */}
+      <div className="text-center py-6">
+        <div className="flex justify-center mb-4">
+          <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
+            <span className="text-2xl">🥏</span>
+          </div>
         </div>
-        <UserButton afterSignOutUrl="/" />
+        <h1 className="text-3xl font-bold text-foreground">
+          Welcome back{currentUser?.name ? `, ${currentUser.name}` : ''}!
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          Ready to play some disc golf?
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        <Link href="/new">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                🥏 New Round
-              </CardTitle>
-              <CardDescription>
-                Start tracking a new disc golf round
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col justify-center">
+        <div className="grid grid-cols-2 gap-3 max-w-lg mx-auto w-full">
+          <Link href="/new">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer h-24 flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-2xl mb-1">🥏</div>
+                <div className="text-sm font-medium text-foreground">New Round</div>
+              </div>
+            </Card>
+          </Link>
 
-        <Link href="/rounds">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                📋 Previous Rounds
-              </CardTitle>
-              <CardDescription>
-                View your round history and detailed statistics
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
+          <Link href="/rounds">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer h-24 flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-2xl mb-1">📋</div>
+                <div className="text-sm font-medium text-foreground">Previous Rounds</div>
+              </div>
+            </Card>
+          </Link>
 
-        <Link href="/stats">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                📊 My Stats
-              </CardTitle>
-              <CardDescription>
-                View your performance and statistics
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
+          <Link href="/stats">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer h-24 flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-2xl mb-1">📊</div>
+                <div className="text-sm font-medium text-foreground">My Stats</div>
+              </div>
+            </Card>
+          </Link>
 
-        <Link href="/friends">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                👥 Friends
-              </CardTitle>
-              <CardDescription>
-                Connect with other players and compete
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </Link>
+          <Link href="/friends">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer h-24 flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-2xl mb-1">👥</div>
+                <div className="text-sm font-medium text-foreground">Friends</div>
+              </div>
+            </Card>
+          </Link>
+        </div>
 
-        <Link href="/profile">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                👤 Profile
-              </CardTitle>
-              <CardDescription>
-                Manage your account and preferences
-              </CardDescription>
-            </CardHeader>
+        {/* Quick Stats */}
+        <div className="mt-8 max-w-lg mx-auto w-full">
+          <Card>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <div>
+                  <div className="text-lg font-bold text-foreground">0</div>
+                  <div className="text-xs text-muted-foreground">Rounds</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-foreground">0</div>
+                  <div className="text-xs text-muted-foreground">Best</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-foreground">0</div>
+                  <div className="text-xs text-muted-foreground">Aces</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-foreground">0</div>
+                  <div className="text-xs text-muted-foreground">Birdies</div>
+                </div>
+              </div>
+            </CardContent>
           </Card>
-        </Link>
+        </div>
       </div>
     </main>
   )

@@ -64,3 +64,4 @@ The test page is now working without Convex, but to use the full app features, y
 ⏳ **Pending**: Environment variables setup  
 
 The app is designed to work gracefully even without Convex running, but you'll need it for the full disc golf tracking features!
+

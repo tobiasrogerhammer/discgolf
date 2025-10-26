@@ -8,8 +8,11 @@
  * @module
  */
 
+import type * as achievements from "../achievements.js";
 import type * as courses from "../courses.js";
+import type * as favoriteCourses from "../favoriteCourses.js";
 import type * as friends from "../friends.js";
+import type * as goals from "../goals.js";
 import type * as groupRounds from "../groupRounds.js";
 import type * as rounds from "../rounds.js";
 import type * as seed from "../seed.js";
@@ -31,8 +34,11 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  achievements: typeof achievements;
   courses: typeof courses;
+  favoriteCourses: typeof favoriteCourses;
   friends: typeof friends;
+  goals: typeof goals;
   groupRounds: typeof groupRounds;
   rounds: typeof rounds;
   seed: typeof seed;

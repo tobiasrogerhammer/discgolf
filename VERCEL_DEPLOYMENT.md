@@ -232,3 +232,4 @@ If you encounter issues:
 - [ ] Webhook tested (if configured)
 
 **🎉 Your Disc Golf Tracker is now live on Vercel!**
+

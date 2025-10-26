@@ -178,7 +178,7 @@ export default function FriendsPage() {
 
   return (
     <div className="p-4 space-y-6 snap-start">
-      <div>
+      <div className="text-center">
         <h1 className="text-3xl font-bold text-[var(--foreground)]">Friends</h1>
         <p className="text-[var(--muted-foreground)]">
           Connect with other disc golf players

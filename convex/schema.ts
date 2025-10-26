@@ -237,5 +237,14 @@ export default defineSchema({
     .index("by_round", ["roundId"])
     .index("by_user", ["userId"])
     .index("by_round_user", ["roundId", "userId"]),
+
+  favoriteCourses: defineTable({
+    userId: v.id("users"),
+    courseId: v.id("courses"),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_course", ["courseId"])
+    .index("by_user_course", ["userId", "courseId"]),
 });
 

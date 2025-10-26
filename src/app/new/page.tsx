@@ -6,21 +6,21 @@ import { api } from '../../../convex/_generated/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { FriendSelector } from '@/components/FriendSelector';
-import { MultiPlayerScoreInput } from '@/components/MultiPlayerScoreInput';
+import { CourseDetails } from '@/components/CourseDetails';
+import { Search, Heart, MapPin, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface Participant {
   id: string;
   type: 'user' | 'guest';
   name: string;
   email?: string;
-  userId?: any; // Convex ID type
+  userId?: any;
 }
 
 interface ScoreData {
@@ -31,246 +31,213 @@ interface ScoreData {
 
 export default function NewGamePage() {
   const { user, currentUser } = useCurrentUser();
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const [roundType, setRoundType] = useState<string>("CASUAL");
   const [participants, setParticipants] = useState<Participant[]>([]);
-  const [scores, setScores] = useState<ScoreData>({});
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isRoundComplete, setIsRoundComplete] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
   
   const courses = useQuery(api.courses.getAll);
-  const courseHoles = useQuery(api.courses.getHoles, 
-    selectedCourse ? { courseId: selectedCourse as any } : "skip"
-  );
-  
-  const createRound = useMutation(api.rounds.create);
-  const createGroupRound = useMutation(api.groupRounds.createGroupRound);
-  
   const { toast } = useToast();
 
   const selectedCourseData = courses?.find(c => c._id === selectedCourse);
 
-  const handleScoresChange = (newScores: ScoreData) => {
-    setScores(newScores);
+  // Filter courses based on search query
+  const filteredCourses = courses?.filter(course =>
+    course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (course.location && course.location.toLowerCase().includes(searchQuery.toLowerCase()))
+  ) || [];
+
+  const handleStartGame = (courseId: string) => {
+    setSelectedCourse(courseId);
   };
 
-  const handleRoundComplete = (complete: boolean) => {
-    setIsRoundComplete(complete);
-  };
-
-  const handleSaveRound = async () => {
-    if (!selectedCourse || !currentUser) {
-      console.error('Missing required data:', { selectedCourse, currentUser });
+  const handleStartScoring = () => {
+    if (!selectedCourse) {
+      toast({
+        title: "Error",
+        description: "Please select a course first.",
+        variant: "destructive",
+      });
       return;
     }
 
-    console.log('Saving round with data:', {
-      selectedCourse,
-      currentUser: currentUser._id,
-      participants: participants.length,
-      scores: Object.keys(scores),
-      roundType
+    // Build URL with game setup parameters
+    const params = new URLSearchParams({
+      courseId: selectedCourse,
+      roundType: roundType,
+      participants: encodeURIComponent(JSON.stringify(participants))
     });
 
-    setIsSaving(true);
-    try {
-      if (participants.length === 0) {
-        // Single player round
-        const playerScores = scores['you'] || {};
-        const roundScores = courseHoles?.map((hole, index) => ({
-          hole: hole.hole,
-          strokes: playerScores[index] || hole.par,
-        })) || [];
-
-        await createRound({
-          userId: currentUser._id,
-          courseId: selectedCourse as any,
-          roundType: roundType as any,
-          scores: roundScores,
-        });
-
-        toast({
-          title: "Round saved!",
-          description: "Your disc golf round has been saved successfully.",
-        });
-      } else {
-        // Group round
-        const allParticipants = [
-          {
-            userId: currentUser._id,
-            scores: courseHoles?.map((hole, index) => ({
-              hole: hole.hole,
-              strokes: scores['you']?.[index] || hole.par,
-            })) || [],
-          },
-          ...participants.map(participant => ({
-            userId: participant.userId as any,
-            guestName: participant.type === 'guest' ? participant.name : undefined,
-            guestEmail: participant.type === 'guest' ? participant.email : undefined,
-            scores: courseHoles?.map((hole, index) => ({
-              hole: hole.hole,
-              strokes: scores[participant.id]?.[index] || hole.par,
-            })) || [],
-          }))
-        ];
-
-        await createGroupRound({
-          userId: currentUser._id,
-          courseId: selectedCourse as any,
-          roundType: roundType as any,
-          participants: allParticipants,
-        });
-
-        toast({
-          title: "Group round saved!",
-          description: `Round with ${participants.length + 1} players has been saved successfully.`,
-        });
-      }
-
-      // Reset form
-      setSelectedCourse(null);
-      setParticipants([]);
-      setScores({});
-      setIsDialogOpen(false);
-      setIsRoundComplete(false);
-    } catch (error) {
-      console.error("Error saving round:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save round. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
+    // Navigate to score page
+    router.push(`/score?${params.toString()}`);
   };
 
-  // Temporarily disabled for testing
-  // if (!user || !currentUser) {
-  //   return (
-  //     <div className="p-4">
-  //       <Card>
-  //         <CardHeader>
-  //           <CardTitle>Sign in required</CardTitle>
-  //           <CardDescription>
-  //             Please sign in to start tracking your disc golf rounds.
-  //           </CardDescription>
-  //         </CardHeader>
-  //       </Card>
-  //     </div>
-  //   );
-  // }
 
-  return (
-    <div className="p-4 space-y-6 snap-start">
-      <div>
-        <h1 className="text-3xl font-bold text-[var(--foreground)]">New Round</h1>
-        <p className="text-[var(--muted-foreground)]">
-          Start tracking a new disc golf round
+    return (
+    <div className="p-3 space-y-4">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold text-[var(--foreground)]">New Round</h1>
+        <p className="text-sm text-[var(--muted-foreground)]">
+          Choose a course and start your disc golf round
         </p>
       </div>
 
-      {/* Debug info */}
-      <div className="p-4 bg-gray-100 rounded-lg text-sm">
-        <p><strong>Debug Info:</strong></p>
-        <p>Courses: {courses === undefined ? 'Loading...' : courses === null ? 'Error' : `${courses.length} courses loaded`}</p>
-        <p>User: {user ? 'Authenticated' : 'Not authenticated'}</p>
-        <p>CurrentUser: {currentUser === undefined ? 'Loading...' : currentUser === null ? 'Not found in DB' : 'Found in DB'}</p>
-        <p>Participants: {participants.length}</p>
-        <div className="mt-2">
-          <Button 
-            onClick={() => toast({
-              title: "Test Toast",
-              description: "This is a test toast notification.",
-            })}
-            size="sm"
-          >
-            Test Toast
-          </Button>
-        </div>
-      </div>
-
-      {/* Round Type Selection */}
-      <Card className="snap-start">
-        <CardHeader>
-          <CardTitle>Round Type</CardTitle>
-          <CardDescription>
-            Choose the type of round you're playing
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Select value={roundType} onValueChange={setRoundType}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select round type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="CASUAL">Casual</SelectItem>
-              <SelectItem value="PRACTICE">Practice</SelectItem>
-              <SelectItem value="TOURNAMENT">Tournament</SelectItem>
-              <SelectItem value="COMPETITIVE">Competitive</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
-
-      {/* Course Selection */}
       {!selectedCourse ? (
-        <Card className="snap-start">
-          <CardHeader>
-            <CardTitle>Select Course</CardTitle>
-            <CardDescription>
-              Choose a course to start your round
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="max-h-96 overflow-y-auto snap-y snap-mandatory space-y-2">
-              {courses?.map((course) => (
-                <div
-                  key={course._id}
-                  className="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors snap-start"
-                  onClick={() => setSelectedCourse(course._id)}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-semibold">{course.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {course.holes} holes • {course.location}
-                      </p>
-                      {course.description && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {course.description}
-                        </p>
-                      )}
-                    </div>
-                    <Badge variant="secondary">
-                      {course.holes} holes
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
+        <div className="space-y-3">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search courses..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-12 text-base"
+            />
+          </div>
+
+                      {/* Course List */}
+                      <div className="space-y-3">
+                        {filteredCourses.length > 0 ? (
+                          filteredCourses.map((course) => (
+                            <div key={course._id} className="space-y-2">
+                              <Card className="hover:shadow-md transition-shadow">
+                                <CardContent className="p-4">
+                                  <div className="space-y-3">
+                                    {/* Course Header */}
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex-1 min-w-0">
+                                        <h3 className="font-semibold text-base truncate">{course.name}</h3>
+                                        <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                                          {course.location && (
+                                            <div className="flex items-center gap-1">
+                                              <MapPin className="h-3 w-3" />
+                                              <span className="truncate">{course.location}</span>
+                                            </div>
+                                          )}
+                                          <div className="flex items-center gap-1">
+                                            <Calendar className="h-3 w-3" />
+                                            {course.holes} holes
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Course Badges */}
+                                    <div className="flex gap-1 flex-wrap">
+                                      <Badge variant="secondary" className="text-xs">{course.holes} holes</Badge>
+                                      {course.difficulty && (
+                                        <Badge variant="outline" className="text-xs">{course.difficulty}</Badge>
+                                      )}
+                                      {course.estimatedLengthMeters && (
+                                        <Badge variant="outline" className="text-xs">
+                                          {Math.round(course.estimatedLengthMeters / 1000)}km
+                                        </Badge>
+                                      )}
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div className="flex gap-2">
+                                      <Button
+                                        onClick={() => handleStartGame(course._id)}
+                                        size="sm"
+                                        className="flex-1 h-10"
+                                      >
+                                        Start Game
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setExpandedCourseId(expandedCourseId === course._id ? null : course._id)}
+                                        className="flex-1 h-10 flex items-center justify-center gap-1"
+                                      >
+                                        <span>Details</span>
+                                        {expandedCourseId === course._id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                              
+                              {/* Course Details - Dropdown */}
+                              <CourseDetails 
+                                course={course} 
+                                onStartGame={handleStartGame}
+                                isExpanded={expandedCourseId === course._id}
+                              />
+                            </div>
+                          ))
+            ) : (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="text-center py-6 text-muted-foreground">
+                    {searchQuery ? (
+                      <>
+                        <Search className="h-8 w-8 mx-auto mb-3 opacity-50" />
+                        <p className="text-sm">No courses found matching "{searchQuery}"</p>
+                        <p className="text-xs mt-1">Try a different search term</p>
+                      </>
+                    ) : (
+                      <>
+                        <Calendar className="h-8 w-8 mx-auto mb-3 opacity-50" />
+                        <p className="text-sm">No courses available</p>
+                        <p className="text-xs mt-1">Contact admin to add courses</p>
+                      </>
+                    )}
+              </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+          </div>
+        ) : (
+        <div className="space-y-4">
           {/* Selected Course Info */}
-          <Card className="snap-start">
-            <CardHeader>
-              <CardTitle className="flex justify-between items-center">
-                <span>{selectedCourseData?.name}</span>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex justify-between items-start">
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-semibold text-lg truncate">{selectedCourseData?.name}</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {selectedCourseData?.holes} holes • {selectedCourseData?.location}
+                  </p>
+                </div>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setSelectedCourse(null)}
+                  className="ml-2 h-8 px-3 text-xs"
                 >
-                  Change Course
+                  Change
                 </Button>
-              </CardTitle>
-              <CardDescription>
-                {selectedCourseData?.holes} holes • {selectedCourseData?.location}
-              </CardDescription>
-            </CardHeader>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Round Type Selection */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="space-y-3">
+                <div>
+                  <h3 className="font-semibold text-base">Round Type</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Choose the type of round you're playing
+                  </p>
+                </div>
+                <Select value={roundType} onValueChange={setRoundType}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CASUAL">Casual</SelectItem>
+                    <SelectItem value="PRACTICE">Practice</SelectItem>
+                    <SelectItem value="TOURNAMENT">Tournament</SelectItem>
+                    <SelectItem value="COMPETITIVE">Competitive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
           </Card>
 
           {/* Friend/Player Selection */}
@@ -279,66 +246,30 @@ export default function NewGamePage() {
             onParticipantsChange={setParticipants}
           />
 
-          {/* Score Input */}
-          {courseHoles && (
-            <div className="snap-start">
-              <MultiPlayerScoreInput
-                participants={participants}
-                courseHoles={courseHoles}
-                onScoresChange={handleScoresChange}
-                onRoundComplete={handleRoundComplete}
-              />
-            </div>
-          )}
-
-          {/* Round Status Message */}
-          {courseHoles && !isRoundComplete && (
-            <Card className="snap-start">
-              <CardContent className="pt-6">
-                <div className="text-center space-y-2">
+          {/* Start Game Button */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-center space-y-3">
+                <div>
+                  <h3 className="font-semibold text-lg">Ready to Play?</h3>
                   <p className="text-sm text-muted-foreground">
-                    Complete all holes to save your round
+                    {participants.length === 0 
+                      ? "Start your solo round" 
+                      : `Start round with ${participants.length + 1} players`
+                    }
                   </p>
-                  <div className="text-xs text-muted-foreground">
-                    Navigate through all holes and enter scores for all players
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Save Round - Only show when round is complete */}
-          {courseHoles && isRoundComplete && (
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="w-full" size="lg">
-                  {participants.length === 0 ? 'Save Round' : `Save Group Round (${participants.length + 1} players)`}
+                    </div>
+                <Button 
+                  onClick={handleStartScoring}
+                  className="w-full h-12 text-base font-medium"
+                >
+                  🥏 Start Game
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Save Round</DialogTitle>
-                  <DialogDescription>
-                    Are you sure you want to save this round? This action cannot be undone.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
-                    disabled={isSaving}
-                  >
-                    Cancel
-                  </Button>
-                  <Button onClick={handleSaveRound} disabled={isSaving}>
-                    {isSaving ? "Saving..." : "Save Round"}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          )}
-        </div>
-      )}
-    </div>
+              </div>
+            </CardContent>
+          </Card>
+          </div>
+        )}
+      </div>
   );
 }

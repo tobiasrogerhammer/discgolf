@@ -20,15 +20,15 @@ export default function ConvexClientProvider({
 }: {
   children: React.ReactNode
 }) {
-  const { getToken, isLoaded } = useAuth()
+  const { getToken, isLoaded, isSignedIn } = useAuth()
 
   // For testing without authentication, use regular ConvexProvider
   // In production, you'd want to use ConvexProviderWithClerk
   return (
     <ConvexProvider client={convex}>
-      <div className="mx-auto max-w-md min-h-dvh bg-[var(--background)] text-[var(--foreground)] pb-16 overflow-y-auto snap-y snap-mandatory">
+      <div className={`mx-auto max-w-md min-h-dvh bg-[var(--background)] text-[var(--foreground)] ${isSignedIn ? 'pb-16 overflow-y-auto' : 'overflow-hidden'}`}>
         {children}
-        <BottomNav />
+        <BottomNav user={isSignedIn} />
         <Toaster />
       </div>
     </ConvexProvider>
