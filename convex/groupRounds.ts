@@ -111,7 +111,7 @@ export const createGroupRound = mutation({
       }
 
       try {
-        await ctx.runMutation(internal.goals.updateProgress, {
+        await ctx.runMutation(api.goals.updateProgress, {
           userId: userId as any,
           goalType: "ROUNDS_PLAYED",
         });

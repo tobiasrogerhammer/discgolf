@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { internal, api } from "./_generated/api";
 import { v } from "convex/values";
 
 export const getByUser = query({
@@ -335,7 +335,7 @@ export const create = mutation({
 
     // Check for achievements after round completion
     try {
-      await ctx.runMutation(internal.achievements.checkAchievements, {
+      await ctx.runMutation(api.achievements.checkAchievements, {
         userId: args.userId,
       });
     } catch (error) {
@@ -345,7 +345,7 @@ export const create = mutation({
 
     // Update goal progress
     try {
-      await ctx.runMutation(internal.goals.updateProgress, {
+      await ctx.runMutation(api.goals.updateProgress, {
         userId: args.userId,
         goalType: "ROUNDS_PLAYED",
       });
