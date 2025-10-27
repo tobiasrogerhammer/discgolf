@@ -114,6 +114,19 @@ export default function StatsPage() {
     }
   };
 
+  // Rating calculation function (same as in the rounds API)
+  const getRatingFromScore = (score: number) => {
+    const scoreToRating: Record<number, number> = {
+      95:402,94:414,93:426,92:438,91:450,90:462,89:474,88:486,87:498,86:510,
+      85:522,84:534,83:546,82:558,81:570,80:582,79:594,78:606,77:618,76:630,
+      75:642,74:654,73:666,72:678,71:690,70:702,69:714,68:726,67:738,66:750,
+      65:762,64:774,63:786,62:798,61:810,60:822,59:834,58:846,57:858,56:870,
+      55:882,54:894,53:906,52:918,51:930,50:942,49:834,48:846,47:858,46:870,
+      45:1002,44:1014,43:1026,42:1038,41:1050,40:1062,39:1074,38:1086,37:1098,36:1110,
+    };
+    return scoreToRating[score] ?? null;
+  };
+
   return (
     <div className="p-4 space-y-6 snap-start">
       {/* Header with Filters */}
@@ -221,7 +234,7 @@ export default function StatsPage() {
               <CardDescription>
                 Rounds played this month: {monthlyRounds} / {goalTarget}
               </CardDescription>
-              </div>
+            </div>
             <Dialog open={goalDialogOpen} onOpenChange={setGoalDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">
@@ -246,8 +259,8 @@ export default function StatsPage() {
                       value={newGoalTarget}
                       onChange={(e) => setNewGoalTarget(parseInt(e.target.value) || 10)}
                     />
-          </div>
-        </div>
+                  </div>
+                </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setGoalDialogOpen(false)}>
                     Cancel
@@ -264,7 +277,7 @@ export default function StatsPage() {
           <Progress value={monthlyProgress} className="w-full" />
           <div className="mt-2 text-sm text-muted-foreground">
             {monthlyProgress.toFixed(0)}% complete
-      </div>
+          </div>
           {monthlyGoal?.completed && (
             <div className="mt-2 text-sm text-green-600 font-medium">
               🎉 Goal achieved!
@@ -299,14 +312,14 @@ export default function StatsPage() {
                       key={round._id}
                       className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                     >
-                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3">
                         <div className="text-2xl">🥏</div>
-                      <div>
+                        <div>
                           <div className="font-medium">
                             {round.course?.name || 'Unknown Course'}
-                        </div>
+                          </div>
                           <div className="text-sm text-muted-foreground">
-                          {new Date(round.startedAt).toLocaleDateString()} • {round.roundType}
+                            {new Date(round.startedAt).toLocaleDateString()} • {round.roundType}
                           </div>
                         </div>
                       </div>
@@ -517,7 +530,7 @@ export default function StatsPage() {
                         <div className="text-sm text-orange-700">
                           Your worst score was {worstScore}. Focus on consistency to lower your average!
                         </div>
-              </div>
+                      </div>
                     )}
                   </>
                 )}
