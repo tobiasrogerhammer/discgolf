@@ -624,7 +624,7 @@ export const checkAllUsersAchievements = mutation({
         results.push({
           userId: user._id,
           username: user.username || user.email,
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     }
