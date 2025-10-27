@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { internal, api } from "./_generated/api";
 import { v } from "convex/values";
 
 export const createGroupRound = mutation({
@@ -102,7 +102,7 @@ export const createGroupRound = mutation({
 
     for (const userId of uniqueUserIds) {
       try {
-        await ctx.runMutation(internal.achievements.checkAchievements, {
+        await ctx.runMutation(api.achievements.checkAchievements, {
           userId: userId as any,
         });
       } catch (error) {
