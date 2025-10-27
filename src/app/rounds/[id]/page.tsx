@@ -109,9 +109,14 @@ export default function RoundDetailsPage({ params }: RoundDetailsPageProps) {
               <p className="text-muted-foreground mb-4">
                 This round hasn't been completed. Scores need to be entered to view detailed statistics.
               </p>
-              <Button onClick={() => router.push('/')}>
-                Back to Home
-              </Button>
+              <div className="flex gap-2 justify-center">
+                <Button onClick={() => router.push('/')} variant="outline">
+                  Back to Home
+                </Button>
+                <Button onClick={() => router.push('/new')}>
+                  Start New Round
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -549,41 +554,45 @@ export default function RoundDetailsPage({ params }: RoundDetailsPageProps) {
         </Card>
 
         {/* Weather Information */}
-        {round.weather && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
-                Weather Conditions
-              </CardTitle>
-              <CardDescription>
-                Weather data recorded during this round
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {round.weather.temperature && (
-                  <div className="p-3 bg-muted rounded-lg text-center">
-                    <div className="text-sm text-muted-foreground">Temperature</div>
-                    <div className="text-lg font-semibold">{round.weather.temperature}°F</div>
-                  </div>
-                )}
-                {round.weather.windSpeed && (
-                  <div className="p-3 bg-muted rounded-lg text-center">
-                    <div className="text-sm text-muted-foreground">Wind Speed</div>
-                    <div className="text-lg font-semibold">{round.weather.windSpeed} mph</div>
-                  </div>
-                )}
-                {round.weather.conditions && (
-                  <div className="p-3 bg-muted rounded-lg text-center col-span-2 md:col-span-1">
-                    <div className="text-sm text-muted-foreground">Conditions</div>
-                    <div className="text-lg font-semibold">{round.weather.conditions}</div>
-                  </div>
-                )}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5" />
+              Weather Conditions
+            </CardTitle>
+            <CardDescription>
+              Weather data recorded during this round
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="p-3 bg-muted rounded-lg text-center">
+                <div className="text-sm text-muted-foreground">Temperature</div>
+                <div className="text-lg font-semibold">
+                  {round.weather?.temperature ? `${round.weather.temperature}°F` : 'N/A'}
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
+              <div className="p-3 bg-muted rounded-lg text-center">
+                <div className="text-sm text-muted-foreground">Wind Speed</div>
+                <div className="text-lg font-semibold">
+                  {round.weather?.windSpeed ? `${round.weather.windSpeed} mph` : 'N/A'}
+                </div>
+              </div>
+              <div className="p-3 bg-muted rounded-lg text-center">
+                <div className="text-sm text-muted-foreground">Conditions</div>
+                <div className="text-lg font-semibold">
+                  {round.weather?.conditions || 'N/A'}
+                </div>
+              </div>
+              <div className="p-3 bg-muted rounded-lg text-center">
+                <div className="text-sm text-muted-foreground">Humidity</div>
+                <div className="text-lg font-semibold">
+                  {round.weather?.humidity ? `${round.weather.humidity}%` : 'N/A'}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Notes */}
         {('notes' in round && typeof round.notes === 'string') && (

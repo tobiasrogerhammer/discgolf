@@ -38,8 +38,10 @@ export default function ScorePage() {
   const courseId = searchParams.get('courseId');
   const roundType = searchParams.get('roundType') || 'CASUAL';
   const participantsParam = searchParams.get('participants');
+  const weatherParam = searchParams.get('weather');
   
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [weather, setWeather] = useState<any>(null);
   const [scores, setScores] = useState<ScoreData>({});
   const [isRoundComplete, setIsRoundComplete] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -57,7 +59,7 @@ export default function ScorePage() {
   const createRound = useMutation(api.rounds.create);
   const createGroupRound = useMutation(api.groupRounds.createGroupRound);
 
-  // Parse participants from URL
+  // Parse participants and weather from URL
   useEffect(() => {
     if (participantsParam) {
       try {
@@ -67,7 +69,16 @@ export default function ScorePage() {
         console.error('Error parsing participants:', error);
       }
     }
-  }, [participantsParam]);
+    
+    if (weatherParam) {
+      try {
+        const parsedWeather = JSON.parse(decodeURIComponent(weatherParam));
+        setWeather(parsedWeather);
+      } catch (error) {
+        console.error('Error parsing weather:', error);
+      }
+    }
+  }, [participantsParam, weatherParam]);
 
   // Initialize scores with par values
   useEffect(() => {
@@ -121,6 +132,7 @@ export default function ScorePage() {
           courseId: courseId as any,
           roundType: roundType as any,
           scores: roundScores,
+          weather: weather,
         });
 
         setSavedRoundId(roundId);
@@ -151,9 +163,11 @@ export default function ScorePage() {
           courseId: courseId as any,
           roundType: roundType as any,
           participants: allParticipants,
+          weather: weather,
         });
 
-        setSavedRoundId(groupRoundResult.groupRoundId);
+        // For group rounds, use the first individual round ID for navigation
+        setSavedRoundId(groupRoundResult.roundIds[0]);
         setShowRecap(true);
       }
 
@@ -182,9 +196,20 @@ export default function ScorePage() {
   const handleViewDetails = () => {
     setShowRecap(false);
     if (savedRoundId) {
-      router.push(`/rounds/${savedRoundId}`);
+      // Validate that we have actual score data before navigating
+      const hasValidScores = Object.values(scores).some(playerScores => 
+        Object.values(playerScores).some(score => score > 0)
+      );
+      
+      if (hasValidScores) {
+        router.push(`/rounds/${savedRoundId}`);
+      } else {
+        // If no valid scores, go to rounds page instead
+        router.push('/rounds');
+      }
     } else {
-      router.push('/');
+      // For multi-player rounds, navigate to rounds page to show recent rounds
+      router.push('/rounds');
     }
   };
 

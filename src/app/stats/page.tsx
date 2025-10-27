@@ -198,7 +198,7 @@ export default function StatsPage() {
             <div className="text-center">
               <div className="text-3xl font-bold text-green-600">
                 {bestScore === Infinity ? 'N/A' : bestScore}
-              </div>
+            </div>
               <div className="text-sm text-muted-foreground mt-1">Best Score</div>
           </div>
             
@@ -221,7 +221,7 @@ export default function StatsPage() {
               <CardDescription>
                 Rounds played this month: {monthlyRounds} / {goalTarget}
               </CardDescription>
-            </div>
+              </div>
             <Dialog open={goalDialogOpen} onOpenChange={setGoalDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">

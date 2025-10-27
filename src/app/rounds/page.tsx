@@ -6,12 +6,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { Clock, MapPin, Users, Trophy, Calendar, Target, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Star, BarChart3, Activity } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Clock, MapPin, Users, Trophy, Calendar, Target, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Star, BarChart3, Activity, Cloud } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState, useRef, useEffect } from 'react';
 
 export default function RoundsPage() {
   const { user, currentUser } = useCurrentUser();
+  const router = useRouter();
   const [selectedRound, setSelectedRound] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const detailsRef = useRef<HTMLDivElement>(null);
   
   const rounds = useQuery(api.rounds.getByUser, 
@@ -22,6 +26,13 @@ export default function RoundsPage() {
   const selectedRoundData = useQuery(api.rounds.getRoundOrGroupRoundById, 
     selectedRound ? { id: selectedRound } : "skip"
   );
+
+  // Sort rounds by date
+  const sortedRounds = rounds ? [...rounds].sort((a, b) => {
+    const dateA = a.startedAt || a._creationTime || 0;
+    const dateB = b.startedAt || b._creationTime || 0;
+    return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+  }) : [];
 
   // Scroll to details when a round is selected
   useEffect(() => {
@@ -109,17 +120,30 @@ export default function RoundsPage() {
         </p>
       </div>
 
+      {/* Sort Controls */}
+      {sortedRounds.length > 0 && (
+        <div className="flex justify-end">
+          <Select value={sortOrder} onValueChange={(value: 'newest' | 'oldest') => setSortOrder(value)}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="oldest">Oldest First</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {rounds && rounds.length > 0 ? (
         <div className="space-y-4">
           {/* Rounds List */}
           <div className="space-y-3">
-            {rounds.map((round) => (
+            {sortedRounds.map((round) => (
               <Card 
                 key={round._id} 
-                className={`cursor-pointer transition-all hover:shadow-md ${
-                  selectedRound === round._id ? 'ring-2 ring-primary' : ''
-                }`}
-                onClick={() => setSelectedRound(selectedRound === round._id ? null : round._id)}
+                className="cursor-pointer transition-all hover:shadow-md"
+                onClick={() => router.push(`/rounds/${round._id}`)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
@@ -149,6 +173,24 @@ export default function RoundsPage() {
                           </span>
                         </div>
                       </div>
+                      
+                      {/* Weather Data */}
+                      {round.weather && (
+                        <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Cloud className="h-3 w-3" />
+                            <span>{round.weather.temperature ? `${round.weather.temperature}°C` : 'N/A'}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span>{round.weather.conditions || 'N/A'}</span>
+                          </div>
+                          {round.weather.windSpeed && (
+                            <div className="flex items-center gap-1">
+                              <span>{round.weather.windSpeed} m/s</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     
                     <div className="text-right flex items-center gap-2">
@@ -158,325 +200,13 @@ export default function RoundsPage() {
                         </div>
                         <div className="text-xs text-muted-foreground">total</div>
                       </div>
-                      {selectedRound === round._id ? (
-                        <ChevronUp className="h-5 w-5 text-primary" />
-                      ) : (
-                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                      )}
+                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
                     </div>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
-
-          {/* Round Details */}
-          {selectedRoundData && (() => {
-            // Helper function to get hole par using actual courseHoles data - NO GUESSING
-            const getHolePar = (holeNumber: number) => {
-              if (selectedRoundData.courseHoles && selectedRoundData.courseHoles.length > 0) {
-                const hole = selectedRoundData.courseHoles.find(h => h.hole === holeNumber);
-                return hole ? hole.par : 3; // Default to par 3 if hole not found
-              }
-              
-              // If no courseHoles data, we can't guess - return 3 as fallback
-              return 3;
-            };
-
-            // Calculate comprehensive stats (same as round details page)
-            const totalStrokes = ('totalStrokes' in selectedRoundData && typeof selectedRoundData.totalStrokes === 'number') ? selectedRoundData.totalStrokes : 0;
-            
-            // Calculate course par using actual courseHoles data - NO GUESSING
-            let coursePar = 54; // Default fallback only if no data available
-            
-            if (selectedRoundData.courseHoles && selectedRoundData.courseHoles.length > 0) {
-              // Use actual course holes data - sum of all hole pars
-              coursePar = selectedRoundData.courseHoles.reduce((sum, hole) => sum + hole.par, 0);
-            } else if (selectedRoundData.scores && selectedRoundData.scores.length > 0) {
-              // Calculate course par using actual hole pars from scores
-              coursePar = selectedRoundData.scores.reduce((sum, score) => sum + getHolePar(score.hole), 0);
-            }
-            
-            const scoreToPar = totalStrokes - coursePar;
-            
-            // Calculate best and worst holes using actual hole pars
-            const bestHole = selectedRoundData.scores && selectedRoundData.scores.length > 0 ? selectedRoundData.scores.reduce((best: any, current: any) => {
-              const currentPar = getHolePar(current.hole);
-              const bestPar = getHolePar(best.hole);
-              const currentDiff = current.strokes - currentPar;
-              const bestDiff = best.strokes - bestPar;
-              return currentDiff < bestDiff ? current : best;
-            }) : null;
-            
-            const worstHole = selectedRoundData.scores && selectedRoundData.scores.length > 0 ? selectedRoundData.scores.reduce((worst: any, current: any) => {
-              const currentPar = getHolePar(current.hole);
-              const worstPar = getHolePar(worst.hole);
-              const currentDiff = current.strokes - currentPar;
-              const worstDiff = worst.strokes - worstPar;
-              return currentDiff > worstDiff ? current : worst;
-            }) : null;
-
-            // Calculate over/under par trend using actual hole pars
-            const parTrend = selectedRoundData.scores && selectedRoundData.scores.length > 0 ? selectedRoundData.scores.map((score: any) => {
-              const holePar = getHolePar(score.hole);
-              return score.strokes - holePar;
-            }) : [];
-            const positiveTrend = parTrend.filter((diff: number) => diff < 0).length; // Under par holes
-            const negativeTrend = parTrend.filter((diff: number) => diff > 0).length; // Over par holes
-            const parHoles = parTrend.filter((diff: number) => diff === 0).length;
-
-            // Calculate round duration
-            const endTime = ('completed' in selectedRoundData && typeof selectedRoundData.completed === 'boolean' && selectedRoundData.completed) ? Date.now() : Date.now();
-            const startedAt = ('startedAt' in selectedRoundData && typeof selectedRoundData.startedAt === 'number') ? selectedRoundData.startedAt : Date.now();
-            const duration = endTime - startedAt;
-            const hours = Math.floor(duration / (1000 * 60 * 60));
-            const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
-
-            // Calculate average score per hole
-            const averageScorePerHole = selectedRoundData.scores && selectedRoundData.scores.length > 0 
-              ? (selectedRoundData.scores.reduce((sum: number, score: any) => sum + score.strokes, 0) / selectedRoundData.scores.length).toFixed(1)
-              : "0.0";
-
-            // Calculate standard deviation
-            const standardDeviation = selectedRoundData.scores && selectedRoundData.scores.length > 0 
-              ? Math.sqrt(selectedRoundData.scores.reduce((acc: number, score: any) => {
-                  const diff = score.strokes - parseFloat(averageScorePerHole);
-                  return acc + (diff * diff);
-                }, 0) / selectedRoundData.scores.length).toFixed(1)
-              : "0.0";
-
-            // Calculate birdies, pars, bogeys
-            const birdies = parTrend.filter((diff: number) => diff < 0).length;
-            const pars = parTrend.filter((diff: number) => diff === 0).length;
-            const bogeys = parTrend.filter((diff: number) => diff > 0).length;
-
-            return (
-              <div ref={detailsRef}>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Trophy className="h-5 w-5" />
-                      Round Analysis
-                    </CardTitle>
-                    <CardDescription>
-                      {selectedRoundData.course && 'name' in selectedRoundData.course ? selectedRoundData.course.name : 'Unknown Course'} • {formatDate(('startedAt' in selectedRoundData && typeof selectedRoundData.startedAt === 'number') ? selectedRoundData.startedAt : Date.now())}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Round Summary */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="p-4 bg-muted rounded-lg text-center">
-                        <div className="text-sm text-muted-foreground">Total Strokes</div>
-                        <div className="text-3xl font-bold">{totalStrokes}</div>
-                      </div>
-                      <div className="p-4 bg-muted rounded-lg text-center">
-                        <div className="text-sm text-muted-foreground">Score to Par</div>
-                        <div className={`text-3xl font-bold ${getScoreColor(totalStrokes, coursePar)}`}>
-                          {scoreToPar === 0 ? 'Par' : scoreToPar > 0 ? `+${scoreToPar}` : scoreToPar}
-                        </div>
-                      </div>
-                      <div className="p-4 bg-muted rounded-lg text-center">
-                        <div className="text-sm text-muted-foreground">Average/Hole</div>
-                        <div className="text-3xl font-bold">{averageScorePerHole}</div>
-                      </div>
-                      <div className="p-4 bg-muted rounded-lg text-center">
-                        <div className="text-sm text-muted-foreground">Consistency</div>
-                        <div className="text-3xl font-bold">{standardDeviation}</div>
-                        <div className="text-xs text-muted-foreground">std dev</div>
-                      </div>
-                    </div>
-
-                    {/* Performance Breakdown */}
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="p-4 bg-green-50 rounded-lg text-center">
-                        <div className="text-sm text-green-600 mb-1">Under Par</div>
-                        <div className="text-2xl font-bold text-green-700">{positiveTrend}</div>
-                        <div className="text-xs text-green-600">holes</div>
-                      </div>
-                      <div className="p-4 bg-blue-50 rounded-lg text-center">
-                        <div className="text-sm text-blue-600 mb-1">Par</div>
-                        <div className="text-2xl font-bold text-blue-700">{parHoles}</div>
-                        <div className="text-xs text-blue-600">holes</div>
-                      </div>
-                      <div className="p-4 bg-red-50 rounded-lg text-center">
-                        <div className="text-sm text-red-600 mb-1">Over Par</div>
-                        <div className="text-2xl font-bold text-red-700">{negativeTrend}</div>
-                        <div className="text-xs text-red-600">holes</div>
-                      </div>
-                    </div>
-
-                    {/* Best/Toughest Holes */}
-                    {bestHole && worstHole && (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 bg-green-50 rounded-lg">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Star className="h-4 w-4 text-green-600" />
-                            <span className="font-semibold text-green-700">Best Hole</span>
-                          </div>
-                          <div className="text-2xl font-bold">Hole {bestHole.hole}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {bestHole.strokes} strokes • Par {getHolePar(bestHole.hole)} • {bestHole.strokes - getHolePar(bestHole.hole) < 0 ? `${Math.abs(bestHole.strokes - getHolePar(bestHole.hole))} under` : bestHole.strokes - getHolePar(bestHole.hole) === 0 ? 'Par' : `${bestHole.strokes - getHolePar(bestHole.hole)} over`}
-                          </div>
-                        </div>
-                        <div className="p-4 bg-red-50 rounded-lg">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Target className="h-4 w-4 text-red-600" />
-                            <span className="font-semibold text-red-700">Toughest Hole</span>
-                          </div>
-                          <div className="text-2xl font-bold">Hole {worstHole.hole}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {worstHole.strokes} strokes • Par {getHolePar(worstHole.hole)} • {worstHole.strokes - getHolePar(worstHole.hole) > 0 ? `${worstHole.strokes - getHolePar(worstHole.hole)} over` : worstHole.strokes - getHolePar(worstHole.hole) === 0 ? 'Par' : `${Math.abs(worstHole.strokes - getHolePar(worstHole.hole))} under`}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Over/Under Par Trend */}
-                    <div>
-                      <h4 className="font-semibold mb-2 flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4" />
-                        Performance Trend
-                      </h4>
-                      <div className="grid grid-cols-6 md:grid-cols-9 gap-1">
-                        {parTrend.map((diff: number, index: number) => (
-                          <div key={index} className="flex flex-col items-center p-1 rounded text-xs">
-                            <div className="text-xs text-muted-foreground mb-1">H{index + 1}</div>
-                            <div className="flex items-center gap-1 mb-1">
-                              {Math.abs(diff) <= 3 ? (
-                                // Show dots for small differences (1-3)
-                                Array.from({ length: Math.abs(diff) }, (_, i) => (
-                                  <div
-                                    key={i}
-                                    className={`h-1.5 w-1.5 rounded-full ${
-                                      diff < 0 ? 'bg-green-500' : diff > 0 ? 'bg-red-500' : 'bg-blue-500'
-                                    }`}
-                                  />
-                                ))
-                              ) : (
-                                // Show just the number for large differences (4+)
-                                <div className={`text-xs font-bold ${
-                                  diff < 0 ? 'text-green-600' : diff > 0 ? 'text-red-600' : 'text-blue-600'
-                                }`}>
-                                  {Math.abs(diff)}
-                                </div>
-                              )}
-                              {diff === 0 && <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />}
-                            </div>
-                            <div className="text-xs font-mono">
-                              {diff < 0 ? `${diff}` : diff > 0 ? `+${diff}` : 'E'}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Hole-by-Hole Breakdown */}
-                    {selectedRoundData.scores && selectedRoundData.scores.length > 0 && (
-                      <div>
-                        <h4 className="font-semibold mb-2 flex items-center gap-2">
-                          <Target className="h-4 w-4" />
-                          Hole-by-Hole Breakdown
-                        </h4>
-                        <div className="grid grid-cols-6 md:grid-cols-9 gap-1">
-                          {selectedRoundData.scores
-                            .sort((a, b) => a.hole - b.hole)
-                            .map((score) => {
-                              const holePar = getHolePar(score.hole);
-                              const scoreToPar = score.strokes - holePar;
-                              const isUnderPar = scoreToPar < 0;
-                              const isPar = scoreToPar === 0;
-                              const isOverPar = scoreToPar > 0;
-                              
-                              return (
-                                <div 
-                                  key={score.hole}
-                                  className={`p-2 rounded text-center text-xs ${
-                                    isUnderPar ? 'bg-green-100 text-green-800 border border-green-200' :
-                                    isPar ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                                    'bg-red-100 text-red-800 border border-red-200'
-                                  }`}
-                                >
-                                  <div className="text-xs text-muted-foreground">H{score.hole}</div>
-                                  <div className="text-lg font-bold">{score.strokes}</div>
-                                  <div className="text-xs">
-                                    Par {holePar}
-                                  </div>
-                                  <div className="text-xs font-semibold">
-                                    {isUnderPar ? `${Math.abs(scoreToPar)} under` :
-                                     isPar ? 'Par' :
-                                     `${scoreToPar} over`}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Round Details */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="p-3 bg-muted rounded-lg">
-                        <div className="text-sm text-muted-foreground">Round Type</div>
-                        <div className="text-lg font-semibold">{('roundType' in selectedRoundData && typeof selectedRoundData.roundType === 'string') ? selectedRoundData.roundType : 'Casual'}</div>
-                      </div>
-                      <div className="p-3 bg-muted rounded-lg">
-                        <div className="text-sm text-muted-foreground">Duration</div>
-                        <div className="text-lg font-semibold">{hours}h {minutes}m</div>
-                      </div>
-                      <div className="p-3 bg-muted rounded-lg">
-                        <div className="text-sm text-muted-foreground">Course</div>
-                        <div className="text-lg font-semibold">{selectedRoundData.course && 'name' in selectedRoundData.course ? selectedRoundData.course.name : 'Unknown Course'}</div>
-                      </div>
-                      <div className="p-3 bg-muted rounded-lg">
-                        <div className="text-sm text-muted-foreground">Holes</div>
-                        <div className="text-lg font-semibold">{selectedRoundData.course && 'holes' in selectedRoundData.course ? selectedRoundData.course.holes : 18}</div>
-                      </div>
-                    </div>
-
-                    {/* Weather Information */}
-                    {selectedRoundData.weather && (
-                      <div>
-                        <h4 className="font-semibold mb-3 flex items-center gap-2">
-                          <MapPin className="h-4 w-4" />
-                          Weather Conditions
-                        </h4>
-                        <div className="grid grid-cols-2 gap-4">
-                          {selectedRoundData.weather.temperature && (
-                            <div className="p-3 bg-muted rounded-lg">
-                              <div className="text-sm text-muted-foreground">Temperature</div>
-                              <div className="text-lg font-semibold">{selectedRoundData.weather.temperature}°F</div>
-                            </div>
-                          )}
-                          {selectedRoundData.weather.windSpeed && (
-                            <div className="p-3 bg-muted rounded-lg">
-                              <div className="text-sm text-muted-foreground">Wind Speed</div>
-                              <div className="text-lg font-semibold">{selectedRoundData.weather.windSpeed} mph</div>
-                            </div>
-                          )}
-                          {selectedRoundData.weather.conditions && (
-                            <div className="p-3 bg-muted rounded-lg col-span-2">
-                              <div className="text-sm text-muted-foreground">Conditions</div>
-                              <div className="text-lg font-semibold">{selectedRoundData.weather.conditions}</div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Notes */}
-                    {('notes' in selectedRoundData && typeof selectedRoundData.notes === 'string' && selectedRoundData.notes) && (
-                      <div>
-                        <h4 className="font-semibold mb-3">Notes</h4>
-                        <div className="p-3 bg-muted rounded-lg">
-                          <p className="text-sm">{selectedRoundData.notes}</p>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            );
-          })()}
         </div>
       ) : (
         <Card>

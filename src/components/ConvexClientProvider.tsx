@@ -26,7 +26,7 @@ export default function ConvexClientProvider({
   // In production, you'd want to use ConvexProviderWithClerk
   return (
     <ConvexProvider client={convex}>
-      <div className={`mx-auto max-w-md min-h-dvh bg-[var(--background)] text-[var(--foreground)] ${isSignedIn ? 'pb-16 overflow-y-auto' : 'overflow-hidden'}`}>
+      <div className={`mx-auto max-w-md min-h-dvh bg-[var(--background)] text-[var(--foreground)] ${isSignedIn ? 'pb-16' : 'overflow-hidden'}`}>
         {children}
         <BottomNav user={isSignedIn} />
         <Toaster />

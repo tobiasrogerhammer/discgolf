@@ -17,6 +17,7 @@ import type * as groupRounds from "../groupRounds.js";
 import type * as rounds from "../rounds.js";
 import type * as seed from "../seed.js";
 import type * as stats from "../stats.js";
+import type * as userPreferences from "../userPreferences.js";
 import type * as users from "../users.js";
 
 import type {
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   rounds: typeof rounds;
   seed: typeof seed;
   stats: typeof stats;
+  userPreferences: typeof userPreferences;
   users: typeof users;
 }>;
 declare const fullApiWithMounts: typeof fullApi;

@@ -246,5 +246,23 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_course", ["courseId"])
     .index("by_user_course", ["userId", "courseId"]),
+
+  userPreferences: defineTable({
+    userId: v.id("users"),
+    dashboardLayout: v.union(
+      v.literal("COMPACT"),
+      v.literal("DEFAULT"),
+      v.literal("DETAILED")
+    ),
+    enabledStats: v.array(v.string()), // Array of stat keys like ["totalRounds", "bestScore", "aces", "birdies", "averageScore", "consistency", "improvement"]
+    enabledShortcuts: v.array(v.string()), // Array of shortcut keys like ["newRound", "previousRounds", "stats", "friends", "courses", "leaderboard"]
+    statsOrder: v.array(v.string()), // Order of stats display
+    shortcutsOrder: v.array(v.string()), // Order of shortcuts display
+    showWelcomeMessage: v.boolean(),
+    showQuickActions: v.boolean(),
+    showRecentActivity: v.boolean(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"]),
 });
 

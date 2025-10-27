@@ -61,7 +61,7 @@ export function RoundRecap({ roundId, roundData, onClose, onViewDetails }: Round
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-start justify-center p-2 sm:p-4 z-50 overflow-y-auto pt-16 sm:pt-8 pb-20 sm:pb-8">
       {/* Celebration Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 text-2xl animate-bounce opacity-60" style={{ animationDelay: '0.5s' }}>🎉</div>
@@ -70,20 +70,20 @@ export function RoundRecap({ roundId, roundData, onClose, onViewDetails }: Round
         <div className="absolute bottom-1/4 right-1/3 text-xl animate-bounce opacity-60" style={{ animationDelay: '2s' }}>⭐</div>
       </div>
       <div className={cn(
-        "w-full max-w-md mx-auto my-8 transform transition-all duration-700 ease-out",
+        "w-full max-w-md mx-auto my-2 sm:my-8 transform transition-all duration-700 ease-out",
         isVisible ? "translate-y-0 opacity-100 scale-100" : "translate-y-8 opacity-0 scale-95"
       )}>
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 shadow-2xl max-h-[90vh] flex flex-col">
-          <CardHeader className="text-center pb-3 flex-shrink-0">
-            <div className="flex items-center justify-center mb-2">
-              <div className="p-2 bg-orange-500 rounded-full animate-pulse-slow">
-                <Trophy className="h-6 w-6 text-white" />
+        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 shadow-2xl max-h-[calc(100vh-10rem)] sm:max-h-[90vh] flex flex-col">
+          <CardHeader className="text-center pb-2 sm:pb-3 flex-shrink-0">
+            <div className="flex items-center justify-center mb-1 sm:mb-2">
+              <div className="p-1.5 sm:p-2 bg-orange-500 rounded-full animate-pulse-slow">
+                <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
             </div>
-            <CardTitle className="text-2xl font-bold text-orange-800 mb-1">
+            <CardTitle className="text-xl sm:text-2xl font-bold text-orange-800 mb-1">
               Round Complete! 🎉
             </CardTitle>
-            <CardDescription className="text-sm text-orange-700">
+            <CardDescription className="text-xs sm:text-sm text-orange-700">
               Great round at {roundData.courseName}
             </CardDescription>
           </CardHeader>
@@ -94,17 +94,17 @@ export function RoundRecap({ roundId, roundData, onClose, onViewDetails }: Round
               "text-center transition-all duration-1000 delay-300",
               statsVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
             )}>
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                <div className="p-3 bg-white rounded-lg shadow-sm">
-                  <div className="text-2xl font-bold text-gray-800">
+              <div className="grid grid-cols-3 gap-1 sm:gap-2 mb-3 sm:mb-4">
+                <div className="p-2 sm:p-3 bg-white rounded-lg shadow-sm">
+                  <div className="text-xl sm:text-2xl font-bold text-gray-800">
                     {roundData.totalStrokes}
                   </div>
                   <div className="text-xs text-gray-600">Total</div>
                 </div>
                 
-                <div className="p-3 bg-white rounded-lg shadow-sm">
+                <div className="p-2 sm:p-3 bg-white rounded-lg shadow-sm">
                   <div className={cn(
-                    "text-2xl font-bold text-center",
+                    "text-xl sm:text-2xl font-bold text-center",
                     (roundData.totalStrokes - roundData.coursePar) < 0 ? "text-green-600" : 
                     (roundData.totalStrokes - roundData.coursePar) === 0 ? "text-blue-600" : "text-red-600"
                   )}>
@@ -116,8 +116,8 @@ export function RoundRecap({ roundId, roundData, onClose, onViewDetails }: Round
                   </div>
                 </div>
 
-                <div className="p-3 bg-white rounded-lg shadow-sm">
-                  <div className="text-2xl font-bold text-gray-800">
+                <div className="p-2 sm:p-3 bg-white rounded-lg shadow-sm">
+                  <div className="text-xl sm:text-2xl font-bold text-gray-800">
                     {roundData.coursePar}
                   </div>
                   <div className="text-xs text-gray-600">Par</div>
@@ -138,18 +138,18 @@ export function RoundRecap({ roundId, roundData, onClose, onViewDetails }: Round
               "transition-all duration-1000 delay-500",
               statsVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
             )}>
-              <div className="bg-white border border-orange-200 rounded-lg p-3">
-                <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="bg-white border border-orange-200 rounded-lg p-2 sm:p-3">
+                <div className="grid grid-cols-3 gap-1 sm:gap-2 text-center">
                   <div>
-                    <div className="text-lg font-bold text-green-600">{positiveTrend}</div>
+                    <div className="text-base sm:text-lg font-bold text-green-600">{positiveTrend}</div>
                     <div className="text-xs text-green-600">Under Par</div>
                   </div>
                   <div>
-                    <div className="text-lg font-bold text-blue-600">{parHoles}</div>
+                    <div className="text-base sm:text-lg font-bold text-blue-600">{parHoles}</div>
                     <div className="text-xs text-blue-600">Par</div>
                   </div>
                   <div>
-                    <div className="text-lg font-bold text-red-600">{negativeTrend}</div>
+                    <div className="text-base sm:text-lg font-bold text-red-600">{negativeTrend}</div>
                     <div className="text-xs text-red-600">Over Par</div>
                   </div>
                 </div>
@@ -191,7 +191,7 @@ export function RoundRecap({ roundId, roundData, onClose, onViewDetails }: Round
 
             {/* Action Buttons */}
             <div className={cn(
-              "flex flex-col gap-3 pt-2 transition-all duration-1000 delay-900 flex-shrink-0",
+              "flex flex-col gap-3 pt-2 pb-4 transition-all duration-1000 delay-900 flex-shrink-0",
               statsVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
             )}>
               {/* Share Button */}
@@ -212,15 +212,15 @@ export function RoundRecap({ roundId, roundData, onClose, onViewDetails }: Round
               <div className="flex gap-2">
                 <Button 
                   onClick={handleContinue}
-                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white h-10"
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white h-10 text-sm"
                 >
                   Continue
                 </Button>
-                {onViewDetails && (
+                {onViewDetails && roundData.scores && roundData.scores.some(score => score.strokes > 0) && (
                   <Button 
                     onClick={onViewDetails}
                     variant="outline"
-                    className="flex-1 border-orange-300 text-orange-700 hover:bg-orange-50 h-10"
+                    className="flex-1 border-orange-300 text-orange-700 hover:bg-orange-50 h-10 text-sm"
                   >
                     View Details
                   </Button>

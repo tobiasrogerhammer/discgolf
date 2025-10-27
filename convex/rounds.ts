@@ -195,18 +195,19 @@ export const getRoundOrGroupRoundById = query({
 
     if (groupRound) {
       // This is a group round
-      const course = groupRound.courseId ? await ctx.db.get(groupRound.courseId) : null;
-      const courseHoles = course ? await ctx.db
-        .query("courseHoles")
-        .withIndex("by_course", (q) => q.eq("courseId", groupRound.courseId))
-        .collect() : [];
-      
-      // For group rounds, we need to get all individual rounds created
+      // Get the first individual round to get course info
       const individualRounds = await ctx.db
         .query("rounds")
         .filter((q) => q.eq(q.field("groupRoundId"), args.id as any))
         .collect();
-
+      
+      const firstRound = individualRounds[0];
+      const course = firstRound?.courseId ? await ctx.db.get(firstRound.courseId) : null;
+      const courseHoles = course ? await ctx.db
+        .query("courseHoles")
+        .withIndex("by_course", (q) => q.eq("courseId", firstRound.courseId))
+        .collect() : [];
+      
       // Get the first round's scores as representative (or combine all)
       const scores = individualRounds.length > 0 ? await ctx.db
         .query("scores")

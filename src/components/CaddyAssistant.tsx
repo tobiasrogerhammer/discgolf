@@ -11,7 +11,7 @@ interface CaddyAssistantProps {
   currentScore: number;
   coursePar: number;
   scores: { [hole: number]: number };
-  courseHoles: Array<{ hole: number; par: number }>;
+  courseHoles: Array<{ hole: number; par: number; distanceMeters?: number }>;
 }
 
 export function CaddyAssistant({ 

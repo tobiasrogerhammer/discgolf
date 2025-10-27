@@ -395,7 +395,7 @@ export default function ProfilePage() {
             ))}
           </div>
         </div>
-              )}
+      )}
 
               {/* Unearned Achievements */}
               {achievementProgress.unearned.length > 0 && (

@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, User, UserPlus, X } from 'lucide-react';
+import { Plus, User, UserPlus, X, Search } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 interface Participant {
@@ -30,10 +30,18 @@ export function FriendSelector({ participants, onParticipantsChange }: FriendSel
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const friends = useQuery(api.friends.getFriends, 
     currentUser ? { userId: currentUser._id } : "skip"
   );
+  
+  // Filter friends based on search query
+  const filteredFriends = friends?.filter(friend => {
+    if (!friend) return false;
+    const name = friend.username || friend.name || friend.email || '';
+    return name.toLowerCase().includes(searchQuery.toLowerCase());
+  }) || [];
 
   const addFriend = (friend: any) => {
     const newParticipant: Participant = {
@@ -80,9 +88,6 @@ export function FriendSelector({ participants, onParticipantsChange }: FriendSel
           <User className="h-5 w-5" />
           Playing With
         </CardTitle>
-        <CardDescription>
-          Add friends or guests to your round (optional - you can play solo too!)
-        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Current Participants */}
@@ -128,29 +133,53 @@ export function FriendSelector({ participants, onParticipantsChange }: FriendSel
 
         {/* Add Participants */}
         <div className="space-y-3">
-          {/* Add Friends - Only show if there are friends */}
+          {/* Add Friends - Search Bar */}
           {friends && friends.length > 0 && (
             <div className="space-y-2">
               <Label>Add Friends</Label>
-              <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
-                {friends
-                  .filter(friend => friend && !participants.some(p => p.userId === friend._id))
-                  .map((friend) => (
-                    <div
-                      key={friend?._id}
-                      className="flex items-center justify-between p-2 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                      onClick={() => friend && addFriend(friend)}
-                    >
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        <span className="font-medium">{friend?.username || friend?.name || friend?.email}</span>
-                      </div>
-                      <Button variant="ghost" size="sm">
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+              <div className="relative">
+                <Input
+                  placeholder="Search friends..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pr-8"
+                />
+                <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               </div>
+              
+              {/* Only show results when searching */}
+              {searchQuery && (
+                <>
+                  {/* Filtered Friends List */}
+                  {filteredFriends
+                    .filter(friend => friend && !participants.some(p => p.userId === friend._id))
+                    .length > 0 ? (
+                    <div className="max-h-32 overflow-y-auto space-y-2">
+                      {filteredFriends
+                        .filter(friend => friend && !participants.some(p => p.userId === friend._id))
+                        .map((friend) => (
+                          <div
+                            key={friend?._id}
+                            className="flex items-center justify-between p-2 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                            onClick={() => friend && addFriend(friend)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4" />
+                              <span className="font-medium text-sm">{friend?.username || friend?.name || friend?.email}</span>
+                            </div>
+                            <Button variant="ghost" size="sm">
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-sm text-muted-foreground">
+                      No friends found matching "{searchQuery}"
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
 
@@ -201,13 +230,6 @@ export function FriendSelector({ participants, onParticipantsChange }: FriendSel
           </div>
         </div>
 
-        {participants.length === 0 && (
-          <div className="text-center py-4 text-muted-foreground">
-            <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Playing solo</p>
-            <p className="text-xs">Add friends or guests below to play together, or continue solo!</p>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
