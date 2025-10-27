@@ -63,11 +63,10 @@ export const getById = query({
       .withIndex("by_round", (q) => q.eq("roundId", args.id))
       .collect();
 
-    // Get participant details
+    // Get participant details (without individual scores since schema doesn't support it)
     const participantsWithDetails = await Promise.all(
       participants.map(async (participant) => {
         let name = "Unknown Player";
-        let totalStrokes = 0;
 
         if (participant.userId) {
           const user = await ctx.db.get(participant.userId);
@@ -76,18 +75,9 @@ export const getById = query({
           name = participant.guestName;
         }
 
-        // Calculate total strokes for this participant
-        const participantScores = await ctx.db
-          .query("scores")
-          .withIndex("by_round", (q) => q.eq("roundId", args.id))
-          .filter((q) => q.eq(q.field("participantId"), participant._id))
-          .collect();
-        
-        totalStrokes = participantScores.reduce((sum, score) => sum + score.strokes, 0);
-
         return {
           name,
-          totalStrokes,
+          totalStrokes: 0, // Individual scores not supported in current schema
         };
       })
     );
