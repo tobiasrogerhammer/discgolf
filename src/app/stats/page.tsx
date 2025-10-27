@@ -1,60 +1,118 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-import { LineChart, Line, CartesianGrid, XAxis, YAxis, Legend } from "recharts";
 
-type Course = { id: string; name: string };
-type Insights = {
-  totalRounds: number;
-  averageScore: number;
-  bestScore: number;
-  worstScore: number;
-  improvement: number;
-  bestHoles: Array<{ hole: number; par: number; averageScore: number; difference: number }>;
-  worstHoles: Array<{ hole: number; par: number; averageScore: number; difference: number }>;
-  weatherImpact: any;
-  recentTrend: Array<{ date: string; score: number; roundType: string }>;
-};
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { useState } from 'react';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { PerformanceChart } from '@/components/PerformanceChart';
+import { CoursePerformanceChart } from '@/components/CoursePerformanceChart';
+import { useMutation } from 'convex/react';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import Link from 'next/link';
 
 export default function StatsPage() {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [courseId, setCourseId] = useState<string | null>(null);
-  const [rows, setRows] = useState<{ hole: number; par: number; avg: number }[]>([]);
-  const [insights, setInsights] = useState<Insights | null>(null);
-  const [rounds, setRounds] = useState<any[]>([]);
+  const { user, currentUser } = useCurrentUser();
+  const [selectedCourse, setSelectedCourse] = useState<string>('all');
   const [timePeriod, setTimePeriod] = useState('all');
+  const [goalDialogOpen, setGoalDialogOpen] = useState(false);
+  const [newGoalTarget, setNewGoalTarget] = useState(10);
+  
+  const courses = useQuery(api.courses.getAll);
+  const rounds = useQuery(api.rounds.getByUser, 
+    currentUser ? { userId: currentUser._id } : "skip"
+  );
+  const analytics = useQuery(api.stats.getAnalytics, 
+    currentUser ? { userId: currentUser._id } : "skip"
+  );
+  const monthlyGoal = useQuery(api.goals.getMonthlyRoundsGoal, 
+    currentUser ? { userId: currentUser._id } : "skip"
+  );
+  
+  const setMonthlyGoal = useMutation(api.goals.setMonthlyRoundsGoal);
 
-  useEffect(() => {
-    (async () => {
-      const res = await fetch("/api/courses");
-      const data = await res.json();
-      setCourses(data.courses);
-      if (data.courses[0]) setCourseId(data.courses[0].id);
-    })();
-  }, []);
+  // Filter rounds by course and time period
+  const filteredRounds = rounds?.filter(round => {
+    // Course filter
+    const courseMatch = selectedCourse === 'all' || round.courseId === selectedCourse;
+    
+    // Time period filter
+    if (timePeriod === 'all') return courseMatch;
+    
+    const roundDate = new Date(round.startedAt);
+    const currentDate = new Date();
+    
+    let timeMatch = false;
+    switch (timePeriod) {
+      case 'week':
+        const weekAgo = new Date(currentDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+        timeMatch = roundDate >= weekAgo;
+        break;
+      case 'month':
+        const monthAgo = new Date(currentDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+        timeMatch = roundDate >= monthAgo;
+        break;
+      case 'year':
+        const yearAgo = new Date(currentDate.getTime() - 365 * 24 * 60 * 60 * 1000);
+        timeMatch = roundDate >= yearAgo;
+        break;
+      default:
+        timeMatch = true;
+    }
+    
+    return courseMatch && timeMatch;
+  }) || [];
 
-  useEffect(() => {
-    if (!courseId) return;
-    (async () => {
-      const [statsRes, insightsRes, roundsRes] = await Promise.all([
-        fetch(`/api/stats?courseId=${courseId}`),
-        fetch(`/api/insights?courseId=${courseId}&timePeriod=${timePeriod}`),
-        fetch(`/api/rounds?courseId=${courseId}&timePeriod=${timePeriod}`)
-      ]);
-      const statsData = await statsRes.json();
-      const insightsData = await insightsRes.json();
-      const roundsData = await roundsRes.json();
-      
-      setRows(statsData.rows ?? []);
-      setInsights(insightsData.insights);
-      setRounds(roundsData.rounds ?? []);
-    })();
-  }, [courseId, timePeriod]);
+  // Calculate stats
+  const totalRounds = filteredRounds.length;
+  const totalStrokes = filteredRounds.reduce((sum, round) => sum + (round.totalStrokes || 0), 0);
+  const averageScore = totalRounds > 0 ? (totalStrokes / totalRounds).toFixed(1) : '0';
+  const bestScore = filteredRounds.length > 0 
+    ? Math.min(...filteredRounds.map(round => round.totalStrokes || Infinity))
+    : 0;
+  const worstScore = filteredRounds.length > 0 
+    ? Math.max(...filteredRounds.map(round => round.totalStrokes || 0))
+    : 0;
 
-  const data = useMemo(() => rows.map((r) => ({ name: `Hole ${r.hole}`, par: r.par, avg: r.avg })), [rows]);
-  const yMax = useMemo(() => {
-    const maxVal = data.length ? Math.max(...data.map((d) => Math.max(d.par, d.avg))) : 10;
-    return Math.max(10, Math.ceil(maxVal));
-  }, [data]);
+  // Calculate improvement over time
+  const recentRounds = filteredRounds.slice(0, 5);
+  const olderRounds = filteredRounds.slice(-5);
+  const recentAverage = recentRounds.length > 0 
+    ? recentRounds.reduce((sum, round) => sum + (round.totalStrokes || 0), 0) / recentRounds.length
+    : 0;
+  const olderAverage = olderRounds.length > 0 
+    ? olderRounds.reduce((sum, round) => sum + (round.totalStrokes || 0), 0) / olderRounds.length
+    : 0;
+  const improvement = olderAverage > 0 ? ((olderAverage - recentAverage) / olderAverage * 100) : 0;
+
+  // Calculate monthly progress
+  const monthlyRounds = rounds?.filter(round => {
+    const roundDate = new Date(round.startedAt);
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    return roundDate.getMonth() === currentMonth && roundDate.getFullYear() === currentYear;
+  }).length || 0;
+
+  const goalTarget = monthlyGoal?.target || 10;
+  const monthlyProgress = Math.min((monthlyRounds / goalTarget) * 100, 100);
+
+  const handleSetGoal = async () => {
+    if (currentUser && newGoalTarget > 0) {
+      await setMonthlyGoal({ 
+        userId: currentUser._id, 
+        target: newGoalTarget 
+      });
+      setGoalDialogOpen(false);
+    }
+  };
 
   // Rating calculation function (same as in the rounds API)
   const getRatingFromScore = (score: number) => {
@@ -70,181 +128,417 @@ export default function StatsPage() {
   };
 
   return (
-    <main className="p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-3xl">📊</span>
-          <h1 className="text-2xl font-bold text-[var(--header-color)]">My Stats</h1>
+    <div className="p-4 space-y-6 snap-start">
+      {/* Header with Filters */}
+      <div className="flex flex-col md:items-center md:justify-between gap-4">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-[var(--foreground)]">Stats & Analytics</h1>
+          <p className="text-[var(--muted-foreground)]">
+            Track your disc golf performance and insights
+          </p>
+        </div>
+        
+        {/* Filters */}
+        <div className="flex sm:flex-row gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted-foreground">Course</label>
+            <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+              <SelectTrigger className="h-9 w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Courses</SelectItem>
+                {courses?.map((course) => (
+                  <SelectItem key={course._id} value={course._id}>
+                    {course.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted-foreground">Time Period</label>
+            <Select value={timePeriod} onValueChange={setTimePeriod}>
+              <SelectTrigger className="h-9 w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="year">Last Year</SelectItem>
+                <SelectItem value="month">Last Month</SelectItem>
+                <SelectItem value="week">Last Week</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
       
-      <div className="grid grid-cols-2 gap-2">
-        <select className="border rounded p-2 bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600" value={courseId ?? ""} onChange={(e)=>setCourseId(e.target.value)}>
-          {courses.map((c: any) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-        <select className="border rounded p-2 bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600" value={timePeriod} onChange={(e)=>setTimePeriod(e.target.value)}>
-          <option value="all">All time</option>
-          <option value="month">Last month</option>
-          <option value="year">Last year</option>
-        </select>
+      {/* Quick Navigation */}
+      <div className="flex gap-2 flex-wrap">
+        <Link href="/rounds">
+          <Button variant="outline" size="sm">
+            📋 View All Rounds
+          </Button>
+        </Link>
+        <Link href="/friends">
+          <Button variant="outline" size="sm">
+            👥 Friends
+          </Button>
+        </Link>
       </div>
 
-      {/* Insights Overview */}
-      {insights && (
-        <div className="card p-6">
+      {/* Key Metrics */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Stats</CardTitle>
+          <CardDescription>
+            Overview of your disc golf performance
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-primary">{totalRounds}</div>
+              <div className="text-sm text-muted-foreground mt-1">Total Rounds</div>
+            </div>
+            
+            <div className="text-center">
+              <div className="text-3xl font-bold text-primary">{averageScore}</div>
+              <div className="text-sm text-muted-foreground mt-1">Average Score</div>
+            </div>
+            
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-600">
+                {bestScore === Infinity ? 'N/A' : bestScore}
+            </div>
+              <div className="text-sm text-muted-foreground mt-1">Best Score</div>
+          </div>
+            
+            <div className="text-center">
+              <div className="text-3xl font-bold text-primary">
+                {new Set(filteredRounds?.map(round => round.courseId)).size || 0}
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">Courses Played</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Monthly Goal */}
+      <Card>
+        <CardHeader>
           <div className="flex items-center justify-between">
-            <div className="text-center flex-1">
-              <div className="text-3xl mb-2">📊</div>
-              <div className="text-2xl font-bold text-[var(--color-brand)]">{insights.averageScore}</div>
-              <div className="text-sm text-gray-600 dark:text-white">Average Score</div>
-              {getRatingFromScore(Math.round(insights.averageScore)) && (
-                <div className="text-xs text-green-600 font-medium mt-1">
-                  Rating: {getRatingFromScore(Math.round(insights.averageScore))}
+            <div>
+              <CardTitle>Monthly Goal</CardTitle>
+              <CardDescription>
+                Rounds played this month: {monthlyRounds} / {goalTarget}
+              </CardDescription>
+            </div>
+            <Dialog open={goalDialogOpen} onOpenChange={setGoalDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Set Goal
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Set Monthly Goal</DialogTitle>
+                  <DialogDescription>
+                    Set your target number of rounds to play this month.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="goal-target">Target Rounds</Label>
+                    <Input
+                      id="goal-target"
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={newGoalTarget}
+                      onChange={(e) => setNewGoalTarget(parseInt(e.target.value) || 10)}
+                    />
+                  </div>
                 </div>
-              )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setGoalDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSetGoal}>
+                    Set Goal
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Progress value={monthlyProgress} className="w-full" />
+          <div className="mt-2 text-sm text-muted-foreground">
+            {monthlyProgress.toFixed(0)}% complete
+          </div>
+          {monthlyGoal?.completed && (
+            <div className="mt-2 text-sm text-green-600 font-medium">
+              🎉 Goal achieved!
             </div>
-            <div className="text-center flex-1">
-              <div className="text-3xl mb-2">🏆</div>
-              <div className="text-2xl font-bold text-green-600">{insights.bestScore}</div>
-              <div className="text-sm text-gray-600 dark:text-white">Best Score</div>
-              {getRatingFromScore(insights.bestScore) && (
-                <div className="text-xs text-green-600 font-medium mt-1">
-                  Rating: {getRatingFromScore(insights.bestScore)}
-                </div>
-              )}
-            </div>
-            <div className="text-center flex-1">
-              <div className="text-3xl mb-2">🎯</div>
-              <div className="text-2xl font-bold text-[var(--color-brand)]">{insights.totalRounds}</div>
-              <div className="text-sm text-gray-600 dark:text-white">Rounds Played</div>
-            </div>
-          </div>
-        </div>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Performance Chart */}
-      <div className="w-full card flex justify-center">
-        <LineChart width={340} height={240} data={data}>
-          <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
-          <XAxis dataKey="name" />
-          <YAxis domain={[0, yMax]} allowDecimals={false} />
-          <Legend />
-          <Line type="monotone" dataKey="par" stroke="#22c55e" name="Par" />
-          <Line type="monotone" dataKey="avg" stroke="#ef4444" name="Avg score" />
-        </LineChart>
-      </div>
+      {/* Main Content Tabs */}
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="insights">Insights</TabsTrigger>
+        </TabsList>
 
-      {/* Best/Worst Holes */}
-      {insights && (insights.bestHoles.length > 0 || insights.worstHoles.length > 0) && (
-        <div className="grid grid-cols-2 gap-2">
-          <div className="card">
-            <h3 className="font-semibold text-green-600 mb-2">Best Holes</h3>
-            {insights.bestHoles.map((hole, i) => (
-              <div key={i} className="text-sm">
-                Hole {hole.hole}: {hole.averageScore.toFixed(1)} (Par {hole.par})
-              </div>
-            ))}
-          </div>
-          <div className="card">
-            <h3 className="font-semibold text-red-600 mb-2">Worst Holes</h3>
-            {insights.worstHoles.map((hole, i) => (
-              <div key={i} className="text-sm">
-                Hole {hole.hole}: {hole.averageScore.toFixed(1)} (Par {hole.par})
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-
-      {/* Detailed Stats Table - Collapsible */}
-      <div className="card">
-        <details className="group">
-          <summary className="flex items-center justify-between cursor-pointer p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
-            <h3 className="text-lg font-semibold text-[var(--header-color)]">📋 Detailed Hole Statistics</h3>
-            <span className="text-2xl transition-transform group-open:rotate-90">▶</span>
-          </summary>
-          <div className="border-t">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left bg-gray-50 dark:bg-gray-800">
-                  <th className="p-3 font-medium">Hole</th>
-                  <th className="p-3 font-medium">Average Score</th>
-                  <th className="p-3 font-medium">Par</th>
-                  <th className="p-3 font-medium">Average Difference</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.hole} className="border-t hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <td className="p-3 font-medium">{r.hole}</td>
-                    <td className="p-3">{r.avg.toFixed(1)}</td>
-                    <td className="p-3">{r.par}</td>
-                    <td className="p-3">
-                      <span className={`font-medium ${(r.avg - r.par) < 0 ? 'text-green-600' : (r.avg - r.par) > 0 ? 'text-red-600' : 'text-gray-600'}`}>
-                        {(r.avg - r.par) > 0 ? '+' : ''}{(r.avg - r.par).toFixed(1)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </details>
-      </div>
-
-      {/* Individual Rounds - Collapsible */}
-      <div className="card">
-        <details className="group">
-          <summary className="flex items-center justify-between cursor-pointer p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
-            <h3 className="text-lg font-semibold text-[var(--header-color)]">🏌️ Individual Rounds</h3>
-            <span className="text-2xl transition-transform group-open:rotate-90">▶</span>
-          </summary>
-          <div className="border-t">
-            {rounds.length > 0 ? (
-              <div className="space-y-2 p-4">
-                {rounds.map((round, index) => (
-                  <div key={round.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="text-lg">🏌️</div>
-                      <div>
-                        <div className="font-medium text-[var(--foreground)]">
-                          Round #{rounds.length - index}
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          {/* Recent Rounds */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Rounds</CardTitle>
+              <CardDescription>
+                Your latest disc golf rounds
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {filteredRounds && filteredRounds.length > 0 ? (
+                <div className="space-y-3">
+                  {filteredRounds.slice(0, 5).map((round) => (
+                    <div
+                      key={round._id}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="text-2xl">🥏</div>
+                        <div>
+                          <div className="font-medium">
+                            {round.course?.name || 'Unknown Course'}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {new Date(round.startedAt).toLocaleDateString()} • {round.roundType}
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-300">
-                          {new Date(round.startedAt).toLocaleDateString()} • {round.roundType}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold">
+                          {round.totalStrokes || 'N/A'}
                         </div>
+                        <div className="text-xs text-muted-foreground">strokes</div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-[var(--color-brand)]">
-                          {round.totalStrokes}
-                        </div>
-                        <div className="text-xs text-gray-600 dark:text-gray-300">Total</div>
-                      </div>
-                      {round.rating && (
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-green-600">
-                            {round.rating}
-                          </div>
-                          <div className="text-xs text-gray-600 dark:text-gray-300">Rating</div>
-                        </div>
-                      )}
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No rounds found. Start playing to see your stats!
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Round Types Breakdown */}
+          {filteredRounds && filteredRounds.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Round Types</CardTitle>
+                <CardDescription>
+                  Breakdown of your rounds by type
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {Object.entries(
+                    filteredRounds.reduce((acc, round) => {
+                      acc[round.roundType] = (acc[round.roundType] || 0) + 1;
+                      return acc;
+                    }, {} as Record<string, number>)
+                  ).map(([type, count]) => (
+                    <div key={type} className="flex justify-between items-center">
+                      <Badge variant="secondary">{type}</Badge>
+                      <span className="font-medium">{count} rounds</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Analytics Tab */}
+        <TabsContent value="analytics" className="space-y-6">
+          {/* Performance Chart */}
+          <PerformanceChart rounds={filteredRounds as any} />
+
+          {/* Course Performance Chart */}
+          <CoursePerformanceChart rounds={filteredRounds as any} />
+
+          {/* Performance Trends */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Performance Trends</CardTitle>
+              <CardDescription>
+                How you're improving over time
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">Recent Performance</div>
+                    <div className="text-sm text-muted-foreground">
+                      Last 5 rounds average
                     </div>
                   </div>
-                ))}
+                  <div className="text-lg font-bold">
+                    {recentAverage.toFixed(1)}
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">Previous Performance</div>
+                    <div className="text-sm text-muted-foreground">
+                      Previous 5 rounds average
+                    </div>
+                  </div>
+                  <div className="text-lg font-bold">
+                    {olderAverage.toFixed(1)}
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">Improvement</div>
+                    <div className="text-sm text-muted-foreground">
+                      Change in performance
+                    </div>
+                  </div>
+                  <div className={`text-lg font-bold ${improvement > 0 ? 'text-green-600' : improvement < 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                    {improvement > 0 ? '+' : ''}{improvement.toFixed(1)}%
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="p-4 text-center text-gray-600 dark:text-gray-300">
-                No rounds found for this course and time period.
+            </CardContent>
+          </Card>
+
+          {/* Round Types Analysis */}
+          {filteredRounds.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Round Types Analysis</CardTitle>
+                <CardDescription>
+                  Performance by round type
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {Object.entries(
+                    filteredRounds.reduce((acc, round) => {
+                      if (!acc[round.roundType]) {
+                        acc[round.roundType] = { count: 0, totalStrokes: 0 };
+                      }
+                      acc[round.roundType].count += 1;
+                      acc[round.roundType].totalStrokes += round.totalStrokes || 0;
+                      return acc;
+                    }, {} as Record<string, { count: number; totalStrokes: number }>)
+                  ).map(([type, data]) => {
+                    const average = data.count > 0 ? (data.totalStrokes / data.count).toFixed(1) : '0';
+                    return (
+                      <div key={type} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div>
+                          <Badge variant="secondary">{type}</Badge>
+                          <div className="text-sm text-muted-foreground mt-1">
+                            {data.count} rounds
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-bold">{average}</div>
+                          <div className="text-xs text-muted-foreground">avg score</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Insights Tab */}
+        <TabsContent value="insights" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Performance Insights</CardTitle>
+              <CardDescription>
+                AI-powered insights about your game
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {totalRounds === 0 ? (
+                  <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                    <div className="font-medium text-gray-800">📈 Start Playing!</div>
+                    <div className="text-sm text-gray-700">
+                      Play some rounds to see personalized insights about your disc golf performance.
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {improvement > 5 && (
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="font-medium text-green-800">🎉 Great Improvement!</div>
+                        <div className="text-sm text-green-700">
+                          You've improved by {improvement.toFixed(1)}% in your recent rounds. Keep up the great work!
+                        </div>
+                      </div>
+                    )}
+                    
+                    {totalRounds >= 10 && (
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="font-medium text-blue-800">📊 Consistent Player</div>
+                        <div className="text-sm text-blue-700">
+                          You've played {totalRounds} rounds, showing great dedication to the sport!
+                        </div>
+                      </div>
+                    )}
+                    
+                    {bestScore < 50 && bestScore > 0 && (
+                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <div className="font-medium text-yellow-800">🏆 Excellent Performance</div>
+                        <div className="text-sm text-yellow-700">
+                          Your best score of {bestScore} is impressive! You're playing at a high level.
+                        </div>
+                      </div>
+                    )}
+
+                    {totalRounds > 0 && totalRounds < 5 && (
+                      <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                        <div className="font-medium text-purple-800">🌱 Getting Started</div>
+                        <div className="text-sm text-purple-700">
+                          You've played {totalRounds} rounds. Play a few more to unlock detailed insights!
+                        </div>
+                      </div>
+                    )}
+
+                    {worstScore > 0 && (
+                      <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                        <div className="font-medium text-orange-800">🎯 Room for Improvement</div>
+                        <div className="text-sm text-orange-700">
+                          Your worst score was {worstScore}. Focus on consistency to lower your average!
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-            )}
-          </div>
-        </details>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
       </div>
-    </main>
   );
 }

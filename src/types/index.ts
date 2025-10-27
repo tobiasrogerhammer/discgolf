@@ -1,53 +1,62 @@
 // Core domain types
 export interface User {
-  id: string;
+  _id: string;
   name: string | null;
   email: string;
-  createdAt: Date;
-  updatedAt: Date;
+  image?: string | null;
+  clerkId: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface Course {
-  id: string;
+  _id: string;
   name: string;
   holes: number;
+  location?: string | null;
   description?: string | null;
   addressUrl?: string | null;
   estimatedLengthMeters?: number | null;
   latitude?: number | null;
   longitude?: number | null;
-  holePars?: CourseHole[];
+  difficulty?: string | null;
+  createdAt: number;
 }
 
 export interface CourseHole {
+  _id: string;
+  courseId: string;
   hole: number;
   par: number;
   distanceMeters?: number | null;
 }
 
 export interface Round {
-  id: string;
+  _id: string;
   courseId: string;
   userId: string;
-  totalStrokes: number;
-  rating: number;
+  totalStrokes?: number | null;
+  rating?: number | null;
   roundType: RoundType;
-  startedAt: Date;
-  createdAt: Date;
-  updatedAt: Date;
-  weather?: Weather;
+  startedAt: number;
+  completed: boolean;
+  notes?: string | null;
+  shared: boolean;
+  groupRoundId?: string | null;
+  course?: Course;
   scores?: Score[];
+  weather?: Weather;
 }
 
 export interface Score {
-  id: string;
+  _id: string;
   roundId: string;
   hole: number;
   strokes: number;
 }
 
 export interface Weather {
-  id: string;
+  _id: string;
   roundId: string;
   temperature?: number | null;
   windSpeed?: number | null;
@@ -58,18 +67,17 @@ export interface Weather {
 }
 
 export interface Friendship {
-  id: string;
+  _id: string;
   requesterId: string;
   addresseeId: string;
   status: FriendshipStatus;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: number;
   requester?: User;
   addressee?: User;
 }
 
 export interface Player {
-  id: string;
+  _id: string;
   name: string;
   email: string;
   scores: number[];
@@ -77,11 +85,11 @@ export interface Player {
 
 // Enums
 export type RoundType = 'CASUAL' | 'PRACTICE' | 'TOURNAMENT' | 'COMPETITIVE';
-export type FriendshipStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
+export type FriendshipStatus = 'PENDING' | 'ACCEPTED' | 'BLOCKED';
 export type GroupRole = 'ADMIN' | 'MEMBER';
 export type ChallengeType = 'WEEKLY' | 'MONTHLY' | 'CUSTOM';
-export type GoalType = 'SCORE' | 'ROUNDS' | 'IMPROVEMENT';
-export type ActivityType = 'ROUND_COMPLETED' | 'ACHIEVEMENT_EARNED' | 'GOAL_ACHIEVED' | 'FRIEND_ADDED';
+export type GoalType = 'SCORE_IMPROVEMENT' | 'ROUNDS_PLAYED' | 'COURSES_PLAYED' | 'DISTANCE_THROWN' | 'PUTTING_ACCURACY' | 'CUSTOM';
+export type ActivityType = 'ROUND_COMPLETED' | 'ACHIEVEMENT_EARNED' | 'GOAL_COMPLETED' | 'FRIEND_ADDED' | 'CHALLENGE_COMPLETED' | 'PERSONAL_BEST';
 
 // API Response types
 export interface ApiResponse<T = any> {

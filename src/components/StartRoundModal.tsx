@@ -1,273 +1,224 @@
 "use client";
-import { useState } from "react";
-import { RoundType, WeatherForm, Player, SearchResult } from "@/types";
-import { ROUND_TYPES, WEATHER_CONDITIONS, WIND_DIRECTIONS } from "@/lib/constants";
 
-interface StartRoundModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onStart: (players: Player[], roundType: RoundType, weather: WeatherForm) => void;
-  friends: any[];
-  selectedFriends: string[];
-  onToggleFriend: (friendId: string) => void;
-  searchResults: SearchResult[];
-  userSearch: string;
-  onUserSearchChange: (value: string) => void;
-  onAddPlayer: (user: SearchResult) => void;
-  searching: boolean;
-  searchError: string;
-  selectedCourse: any;
-  onFetchWeather: () => void;
-  loadingWeather: boolean;
-  weather: WeatherForm;
-  setWeather: (weather: WeatherForm) => void;
+import { useState, useEffect } from "react";
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import { useToast } from '@/hooks/use-toast';
+import { FriendSelector } from '@/components/FriendSelector';
+import { Cloud, MapPin } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+interface Participant {
+  id: string;
+  type: 'user' | 'guest';
+  name: string;
+  email?: string;
+  userId?: any;
 }
 
-export default function StartRoundModal({
-  isOpen,
-  onClose,
-  onStart,
-  friends,
-  selectedFriends,
-  onToggleFriend,
-  searchResults,
-  userSearch,
-  onUserSearchChange,
-  onAddPlayer,
-  searching,
-  searchError,
-  selectedCourse,
-  onFetchWeather,
-  loadingWeather,
-  weather,
-  setWeather
-}: StartRoundModalProps) {
-  const [roundType, setRoundType] = useState<RoundType>('CASUAL');
-  const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
-  const [showWeatherInputs, setShowWeatherInputs] = useState(false);
+interface WeatherData {
+  temperature: number;
+  windSpeed: number;
+  conditions: string;
+  humidity: number;
+}
 
-  const handleAutoWeather = () => {
-    setShowWeatherInputs(true);
-    onFetchWeather();
+interface StartRoundModalProps {
+  course: {
+    _id: string;
+    name: string;
+    location?: string;
+    holes: number;
+    latitude?: number;
+    longitude?: number;
+  };
+  isOpen: boolean;
+  onClose: () => void;
+  onStartGame: (params: {
+    courseId: string;
+    roundType: string;
+    participants: Participant[];
+    weather?: WeatherData;
+  }) => void;
+}
+
+export function StartRoundModal({ course, isOpen, onClose, onStartGame }: StartRoundModalProps) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [roundType, setRoundType] = useState<string>("CASUAL");
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [isLoadingWeather, setIsLoadingWeather] = useState(false);
+
+  // Fetch weather data when modal opens
+  useEffect(() => {
+    if (isOpen && course.latitude && course.longitude) {
+      // Optionally fetch weather on open
+    }
+  }, [isOpen, course]);
+
+  const handleFetchWeather = async () => {
+    if (!course.latitude || !course.longitude) {
+     
+      return;
+    }
+
+    setIsLoadingWeather(true);
+    try {
+      const response = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${course.latitude}&lon=${course.longitude}&appid=${process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY}&units=metric`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Weather fetch failed');
+      }
+      
+      const data = await response.json();
+      
+      setWeather({
+        temperature: Math.round(data.main.temp),
+        windSpeed: Math.round(data.wind?.speed || 0),
+        conditions: data.weather[0]?.main || 'Clear',
+        humidity: data.main.humidity || 0,
+      });
+      
+    
+    } catch (error) {
+      console.error('Error fetching weather:', error);
+      toast({
+        title: "Weather Fetch Failed",
+        description: "Could not fetch weather data. Please enter manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingWeather(false);
+    }
   };
 
-  const handleStart = () => {
-    // Create players array with current user and selected friends
-    const players: Player[] = [
-      {
-        id: 'current-user',
-        name: 'You',
-        email: '',
-        scores: [] // Will be initialized with par values in useGameState
-      },
-      ...selectedPlayers.map(player => ({
-        ...player,
-        scores: [] // Will be initialized with par values in useGameState
-      }))
-    ];
-    
-    onStart(players, roundType, weather);
+  const handleStartGame = () => {
+    onStartGame({
+      courseId: course._id,
+      roundType,
+      participants,
+      weather: weather || undefined,
+    });
     onClose();
   };
 
-  const addPlayer = (user: SearchResult) => {
-    const newPlayer: Player = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      scores: []
-    };
-    
-    if (!selectedPlayers.find(p => p.id === user.id)) {
-      setSelectedPlayers(prev => [...prev, newPlayer]);
-    }
-    onUserSearchChange('');
-  };
-
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white dark:bg-gray-800 dark:border-gray-600 rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto border">
-        <h2 className="text-xl font-bold text-[var(--header-color)] mb-4">Start New Round</h2>
-        
-        {/* Round Type */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-[var(--foreground)] mb-2">
-            Round Type
-          </label>
-          <select
-            value={roundType}
-            onChange={(e) => setRoundType(e.target.value as RoundType)}
-            className="w-full p-2 border rounded bg-white dark:bg-gray-700 text-[var(--foreground)]"
-          >
-            {Object.entries(ROUND_TYPES).map(([key, value]) => (
-              <option key={key} value={value}>{value}</option>
-            ))}
-          </select>
-        </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto w-[95vw]">
+        <DialogHeader>
+          <DialogTitle>Start Round</DialogTitle>
+          <DialogDescription>
+            Configure your round settings
+          </DialogDescription>
+        </DialogHeader>
 
-        {/* Add Players */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-[var(--foreground)] mb-2">
-            Add Players to Round (Optional)
-          </label>
-          <input
-            type="text"
-            placeholder="Search by username or email..."
-            value={userSearch}
-            onChange={(e) => onUserSearchChange(e.target.value)}
-            className="w-full p-2 border rounded bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600 text-[var(--foreground)] mb-2"
+        <div className="space-y-4">
+          {/* Round Type Selection */}
+          <Card>
+            <CardContent>
+              <div className="flex items-center justify-around">
+                <div>
+                  <h3 className="font-semibold text-sm">Round Type</h3>
+                </div>
+                <Select value={roundType} onValueChange={setRoundType}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CASUAL">Casual</SelectItem>
+                    <SelectItem value="PRACTICE">Practice</SelectItem>
+                    <SelectItem value="TOURNAMENT">Tournament</SelectItem>
+                    <SelectItem value="COMPETITIVE">Competitive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Friend/Player Selection */}
+          <FriendSelector 
+            participants={participants}
+            onParticipantsChange={setParticipants}
           />
-          
-          {searching && <div className="text-sm text-gray-500">Searching...</div>}
-          {searchError && <div className="text-sm text-red-500">{searchError}</div>}
-          
-          {searchResults.length > 0 && (
-            <div className="space-y-2">
-              {searchResults.map((user) => (
-                <div key={user.id} className="flex items-center justify-between p-2 border rounded">
-                  <div>
-                    <div className="font-medium">{user.name}</div>
-                    <div className="text-sm text-gray-500">{user.email}</div>
+
+
+          {/* Weather Selection */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="space-y-3">
+                <div>
+                  <h3 className="font-semibold text-sm">Weather Conditions</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Current weather at the course
+                  </p>
+                </div>
+                
+                {course.latitude && course.longitude ? (
+                  <div className="space-y-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleFetchWeather}
+                      disabled={isLoadingWeather}
+                      className="w-full"
+                    >
+                      <Cloud className="w-4 h-4 mr-2" />
+                      {isLoadingWeather ? 'Fetching...' : 'Fetch Weather'}
+                    </Button>
+                    
+                    {weather && (
+                      <div className="grid grid-cols-2 gap-2 p-3 bg-muted/50 rounded-lg">
+                        <div>
+                          <div className="text-xs text-muted-foreground">Temperature</div>
+                          <div className="text-sm font-semibold">{weather.temperature}°C</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground">Wind</div>
+                          <div className="text-sm font-semibold">{weather.windSpeed} m/s</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground">Conditions</div>
+                          <div className="text-sm font-semibold">{weather.conditions}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground">Humidity</div>
+                          <div className="text-sm font-semibold">{weather.humidity}%</div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <button
-                    onClick={() => addPlayer(user)}
-                    className="btn btn-sm btn-primary"
-                    disabled={user.isAlreadyFriend}
-                  >
-                    {user.isAlreadyFriend ? 'Already Friends' : 'Add'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Location data not available for this course
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* Weather Conditions */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium text-[var(--foreground)]">
-              Weather Conditions
-            </label>
-            {selectedCourse?.latitude && selectedCourse?.longitude && !showWeatherInputs && (
-              <button
-                onClick={handleAutoWeather}
-                disabled={loadingWeather}
-                className="btn btn-sm btn-outline"
-              >
-                {loadingWeather ? 'Loading...' : '🌤️ Auto Weather'}
-              </button>
-            )}
-            {!selectedCourse?.latitude && !showWeatherInputs && (
-              <button
-                onClick={() => setShowWeatherInputs(true)}
-                className="btn btn-sm btn-outline"
-              >
-                📝 Manual Input
-              </button>
-            )}
-            {showWeatherInputs && (
-              <button
-                onClick={() => setShowWeatherInputs(false)}
-                className="btn btn-sm btn-outline"
-              >
-                🚫 Hide
-              </button>
-            )}
-          </div>
-          {showWeatherInputs && (
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="text"
-                placeholder="Temperature (°C)"
-                value={weather.temperature}
-                onChange={(e) => setWeather({...weather, temperature: e.target.value})}
-                className="p-2 border rounded bg-white dark:bg-gray-700 text-[var(--foreground)]"
-              />
-              <input
-                type="text"
-                placeholder="Wind Speed (m/s)"
-                value={weather.windSpeed}
-                onChange={(e) => setWeather({...weather, windSpeed: e.target.value})}
-                className="p-2 border rounded bg-white dark:bg-gray-700 text-[var(--foreground)]"
-              />
-              <select
-                value={weather.windDirection}
-                onChange={(e) => setWeather({...weather, windDirection: e.target.value})}
-                className="p-2 border rounded bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600 text-[var(--foreground)]"
-              >
-                <option value="">Wind Direction</option>
-                {Object.entries(WIND_DIRECTIONS).map(([key, value]) => (
-                  <option key={key} value={value}>{value}</option>
-                ))}
-              </select>
-              <select
-                value={weather.conditions}
-                onChange={(e) => setWeather({...weather, conditions: e.target.value})}
-                className="p-2 border rounded bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600 text-[var(--foreground)]"
-              >
-                <option value="">Conditions</option>
-                {Object.values(WEATHER_CONDITIONS).map((condition) => (
-                  <option key={condition} value={condition}>{condition}</option>
-                ))}
-              </select>
-              <input
-                type="text"
-                placeholder="Humidity (%)"
-                value={weather.humidity}
-                onChange={(e) => setWeather({...weather, humidity: e.target.value})}
-                className="p-2 border rounded bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600 text-[var(--foreground)]"
-              />
-              <input
-                type="text"
-                placeholder="Pressure (hPa)"
-                value={weather.pressure}
-                onChange={(e) => setWeather({...weather, pressure: e.target.value})}
-                className="p-2 border rounded bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600 text-[var(--foreground)]"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Selected Players */}
-        {selectedPlayers.length > 0 && (
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-[var(--foreground)] mb-2">
-              Selected Players
-            </label>
-            <div className="space-y-1">
-              {selectedPlayers.map((player) => (
-                <div key={player.id} className="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-700 dark:border-gray-600 rounded border">
-                  <span>{player.name}</span>
-                  <button
-                    onClick={() => setSelectedPlayers(prev => prev.filter(p => p.id !== player.id))}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Action buttons */}
-        <div className="flex gap-2">
-          <button
-            onClick={onClose}
-            className="btn btn-outline flex-1"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleStart}
-            className="btn btn-primary flex-1"
-          >
-            Start Round
-          </button>
-        </div>
-      </div>
-    </div>
+          {/* Start Game Button */}
+         
+                <Button 
+                  onClick={handleStartGame}
+                  className="w-full h-12 text-base font-medium"
+                >
+                  Start Game
+                </Button>
+              </div>
+      </DialogContent>
+    </Dialog>
   );
 }
+
