@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ interface ScoreData {
   };
 }
 
-export default function ScorePage() {
+function ScorePageContent() {
   const { user, currentUser } = useCurrentUser();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -338,5 +338,20 @@ export default function ScorePage() {
         />
       )}
     </div>
+  );
+}
+
+export default function ScorePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-pulse text-center">
+          <div className="w-8 h-8 bg-gray-200 rounded-full mx-auto mb-2"></div>
+          <div className="text-sm text-muted-foreground">Loading...</div>
+        </div>
+      </div>
+    }>
+      <ScorePageContent />
+    </Suspense>
   );
 }

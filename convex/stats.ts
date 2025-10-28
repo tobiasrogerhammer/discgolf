@@ -132,25 +132,25 @@ export const getLeaderboard = query({
     if (args.friendsOnly && args.userId) {
       const friendships = await ctx.db
         .query("friendships")
-        .withIndex("by_requester", (q) => q.eq("requesterId", args.userId))
+        .withIndex("by_requester", (q) => q.eq("requesterId", args.userId!))
         .filter((q) => q.eq(q.field("status"), "ACCEPTED"))
         .collect();
 
       const friendshipsAsAddressee = await ctx.db
         .query("friendships")
-        .withIndex("by_addressee", (q) => q.eq("addresseeId", args.userId))
+        .withIndex("by_addressee", (q) => q.eq("addresseeId", args.userId!))
         .filter((q) => q.eq(q.field("status"), "ACCEPTED"))
         .collect();
 
       const allFriendships = [...friendships, ...friendshipsAsAddressee];
       const friendIds = new Set(
         allFriendships.map(friendship => 
-          friendship.requesterId === args.userId 
+          friendship.requesterId === args.userId! 
             ? friendship.addresseeId 
             : friendship.requesterId
         )
       );
-      friendIds.add(args.userId); // Include current user
+      friendIds.add(args.userId!); // Include current user
       
       users = users.filter(user => friendIds.has(user._id));
     }

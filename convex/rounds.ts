@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { api } from "./_generated/api";
 import { v } from "convex/values";
 
 export const getByUser = query({
@@ -80,7 +80,6 @@ export const getById = query({
         const participantScores = await ctx.db
           .query("scores")
           .withIndex("by_round", (q) => q.eq("roundId", args.id))
-          .filter((q) => q.eq(q.field("participantId"), participant._id))
           .collect();
         
         totalStrokes = participantScores.reduce((sum, score) => sum + score.strokes, 0);
@@ -119,9 +118,9 @@ export const getRoundOrGroupRoundById = query({
       // Not a valid rounds table ID, continue to group rounds
     }
 
-    if (round) {
+    if (round && '_id' in round && 'courseId' in round) {
       // This is an individual round
-      const course = round.courseId ? await ctx.db.get(round.courseId) : null;
+      const course = await ctx.db.get(round.courseId);
       const courseHoles = course ? await ctx.db
         .query("courseHoles")
         .withIndex("by_course", (q) => q.eq("courseId", round.courseId))
@@ -159,7 +158,6 @@ export const getRoundOrGroupRoundById = query({
             const participantScores = await ctx.db
               .query("scores")
               .withIndex("by_round", (q) => q.eq("roundId", args.id as any))
-              .filter((q) => q.eq(q.field("participantId"), participant._id))
               .collect();
             
             totalStrokes = participantScores.reduce((sum, score) => sum + score.strokes, 0);
@@ -243,7 +241,6 @@ export const getRoundOrGroupRoundById = query({
             const participantScores = individualRounds.length > 0 ? await ctx.db
               .query("scores")
               .withIndex("by_round", (q) => q.eq("roundId", individualRounds[0]._id))
-              .filter((q) => q.eq(q.field("participantId"), participant._id))
               .collect() : [];
             
             totalStrokes = participantScores.reduce((sum, score) => sum + score.strokes, 0);
@@ -335,7 +332,7 @@ export const create = mutation({
 
     // Check for achievements after round completion
     try {
-      await ctx.runMutation(internal.achievements.checkAchievements, {
+      await ctx.runMutation(api.achievements.checkAchievements, {
         userId: args.userId,
       });
     } catch (error) {
@@ -345,7 +342,7 @@ export const create = mutation({
 
     // Update goal progress
     try {
-      await ctx.runMutation(internal.goals.updateProgress, {
+      await ctx.runMutation(api.goals.updateProgress, {
         userId: args.userId,
         goalType: "ROUNDS_PLAYED",
       });

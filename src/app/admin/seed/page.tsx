@@ -1,14 +1,17 @@
 "use client";
 
 import { useMutation } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
+import { api } from '../../../../convex/_generated/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useState } from 'react';
 
 export default function SeedPage() {
   const [isSeeding, setIsSeeding] = useState(false);
-  const [seedResults, setSeedResults] = useState<any>(null);
+  const [seedResults, setSeedResults] = useState<{
+    courses?: any;
+    achievements?: any;
+  } | null>(null);
 
   const seedCourses = useMutation(api.seed.seedCourses);
   const seedAchievements = useMutation(api.achievements.seedAchievements);
