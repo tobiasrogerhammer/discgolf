@@ -17,3 +17,29 @@ export const getUserStats = query({
     };
   },
 });
+
+export const getLeaderboard = query({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    
+    const leaderboard = await Promise.all(
+      users.map(async (user) => {
+        const rounds = await ctx.db
+          .query("rounds")
+          .withIndex("by_user", (q) => q.eq("userId", user._id))
+          .collect();
+
+        return {
+          userId: user._id,
+          username: user.username || user.email,
+          name: user.name || user.username || user.email,
+          totalRounds: rounds.length,
+          averageScore: 0,
+        };
+      })
+    );
+
+    return leaderboard.sort((a, b) => b.totalRounds - a.totalRounds);
+  },
+});
