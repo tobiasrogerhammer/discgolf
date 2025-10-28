@@ -43,3 +43,21 @@ export const getLeaderboard = query({
     return leaderboard.sort((a, b) => b.totalRounds - a.totalRounds);
   },
 });
+
+export const getAnalytics = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const rounds = await ctx.db
+      .query("rounds")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    return {
+      totalRounds: rounds.length,
+      averageScore: 0,
+      bestScore: 0,
+      roundsThisMonth: 0,
+      roundsThisYear: 0,
+    };
+  },
+});
