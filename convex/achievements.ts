@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 
 // Get all achievements
 export const getAll = query({
@@ -249,7 +250,7 @@ export const checkAchievements = mutation({
         .first();
       
       if (achievement) {
-        const result = await ctx.awardAchievement({
+        const result = await ctx.runMutation(api.achievements.awardAchievement, {
           userId: args.userId,
           achievementId: achievement._id,
         });
@@ -265,7 +266,7 @@ export const checkAchievements = mutation({
         .first();
       
       if (achievement) {
-        const result = await ctx.awardAchievement({
+        const result = await ctx.runMutation(api.achievements.awardAchievement, {
           userId: args.userId,
           achievementId: achievement._id,
         });
@@ -281,7 +282,7 @@ export const checkAchievements = mutation({
         .first();
       
       if (achievement) {
-        const result = await ctx.awardAchievement({
+        const result = await ctx.runMutation(api.achievements.awardAchievement, {
           userId: args.userId,
           achievementId: achievement._id,
         });
@@ -297,7 +298,7 @@ export const checkAchievements = mutation({
         .first();
       
       if (achievement) {
-        const result = await ctx.awardAchievement({
+        const result = await ctx.runMutation(api.achievements.awardAchievement, {
           userId: args.userId,
           achievementId: achievement._id,
         });
@@ -313,7 +314,7 @@ export const checkAchievements = mutation({
         .first();
       
       if (achievement) {
-        const result = await ctx.awardAchievement({
+        const result = await ctx.runMutation(api.achievements.awardAchievement, {
           userId: args.userId,
           achievementId: achievement._id,
         });
@@ -499,7 +500,7 @@ export const checkAllUsersAchievements = mutation({
         results.push({
           userId: user._id,
           username: user.username || user.email,
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     }
