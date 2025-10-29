@@ -206,7 +206,7 @@ export function DashboardSettings({ onClose }: DashboardSettingsProps) {
               value={localPreferences.dashboardLayout}
               onValueChange={(value) => setLocalPreferences({
                 ...localPreferences,
-                dashboardLayout: value as "COMPACT" | "DEFAULT" | "DETAILED"
+                dashboardLayout: value as any
               })}
             >
               <SelectTrigger>

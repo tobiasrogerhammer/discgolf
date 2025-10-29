@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { internal, api } from "./_generated/api";
+import { api } from "./_generated/api";
 import { v } from "convex/values";
 
 export const createGroupRound = mutation({
