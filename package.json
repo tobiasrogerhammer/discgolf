@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack",
     "dev:convex": "convex dev",
     "dev:full": "convex dev --run \"next dev --turbopack\"",
-    "build": "next build --turbopack",
+    "build": "next build",
     "start": "next start",
     "convex": "convex"
   },
@@ -34,11 +34,13 @@
     "recharts": "^3.3.0",
     "svix": "^1.15.0",
     "tailwind-merge": "^3.3.1",
+    "tailwindcss-animate": "^1.0.7",
     "zod": "^4.1.12",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/dom-to-image": "^2.6.7",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

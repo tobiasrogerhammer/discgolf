@@ -1,0 +1,10 @@
+[{"id":"cmgfrov5r0000v60pwc8pire3","name":"First Round","description":"Complete your first round","icon":"🎯","category":"Milestone","criteria":"Complete 1 round","points":10},
+{"id":"cmgfrov620001v60pm19ku9zk","name":"Century Club","description":"Play 100 rounds","icon":"💯","category":"Milestone","criteria":"Complete 100 rounds","points":100},
+{"id":"cmgfrov660002v60pj3rikozv","name":"Course Master","description":"Play 10 different courses","icon":"🗺️","category":"Exploration","criteria":"Play 10 different courses","points":50},
+{"id":"cmgfrov690003v60piokwfcwg","name":"Under Par","description":"Shoot under par on any course","icon":"🏆","category":"Performance","criteria":"Shoot under par","points":75},
+{"id":"cmgfrov6f0004v60pb0xty87y","name":"Eagle Eye","description":"Score an eagle (2 under par)","icon":"🦅","category":"Performance","criteria":"Score an eagle","points":100},
+{"id":"cmgfrov6m0005v60pxmhomssu","name":"Ace","description":"Score a hole-in-one","icon":"🎯","category":"Performance","criteria":"Score a hole-in-one","points":200},
+{"id":"cmgfrov6r0006v60pdger5foz","name":"Weather Warrior","description":"Play in 5 different weather conditions","icon":"🌦️","category":"Adventure","criteria":"Play in 5 different weather conditions","points":30},
+{"id":"cmgfrov6w0007v60pdi4ijhq3","name":"Consistent","description":"Play 5 rounds in a week","icon":"📅","category":"Dedication","criteria":"Play 5 rounds in a week","points":40},
+{"id":"cmgfrov700008v60p2icq4cu8","name":"Social Player","description":"Add 5 friends","icon":"👥","category":"Social","criteria":"Add 5 friends","points":25},
+{"id":"cmgfrov750009v60pfjdfsk98","name":"Goal Setter","description":"Complete your first goal","icon":"🎯","category":"Progress","criteria":"Complete a goal","points":20}]
