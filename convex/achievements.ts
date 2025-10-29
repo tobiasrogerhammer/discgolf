@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 
 // Get all achievements
 export const getAll = query({
@@ -249,36 +250,11 @@ export const checkAchievements = mutation({
         .first();
       
       if (achievement) {
-        // Check if user already has this achievement
-        const existing = await ctx.db
-          .query("userAchievements")
-          .withIndex("by_user_achievement", (q) => 
-            q.eq("userId", args.userId).eq("achievementId", achievement._id)
-          )
-          .first();
-
-        if (!existing) {
-          // Award the achievement
-          await ctx.db.insert("userAchievements", {
-            userId: args.userId,
-            achievementId: achievement._id,
-            earnedAt: Date.now(),
-          });
-
-          // Create activity log
-          await ctx.db.insert("activities", {
-            userId: args.userId,
-            type: "ACHIEVEMENT_EARNED",
-            title: `Achievement Unlocked: ${achievement.name}`,
-            description: achievement.description,
-            data: JSON.stringify({
-              achievementId: achievement._id,
-            }),
-            createdAt: Date.now(),
-          });
-
-          awardedAchievements.push(achievement);
-        }
+        const result = await ctx.runMutation(api.achievements.awardAchievement, {
+          userId: args.userId,
+          achievementId: achievement._id,
+        });
+        if (result) awardedAchievements.push(achievement);
       }
     }
 
@@ -290,36 +266,11 @@ export const checkAchievements = mutation({
         .first();
       
       if (achievement) {
-        // Check if user already has this achievement
-        const existing = await ctx.db
-          .query("userAchievements")
-          .withIndex("by_user_achievement", (q) => 
-            q.eq("userId", args.userId).eq("achievementId", achievement._id)
-          )
-          .first();
-
-        if (!existing) {
-          // Award the achievement
-          await ctx.db.insert("userAchievements", {
-            userId: args.userId,
-            achievementId: achievement._id,
-            earnedAt: Date.now(),
-          });
-
-          // Create activity log
-          await ctx.db.insert("activities", {
-            userId: args.userId,
-            type: "ACHIEVEMENT_EARNED",
-            title: `Achievement Unlocked: ${achievement.name}`,
-            description: achievement.description,
-            data: JSON.stringify({
-              achievementId: achievement._id,
-            }),
-            createdAt: Date.now(),
-          });
-
-          awardedAchievements.push(achievement);
-        }
+        const result = await ctx.runMutation(api.achievements.awardAchievement, {
+          userId: args.userId,
+          achievementId: achievement._id,
+        });
+        if (result) awardedAchievements.push(achievement);
       }
     }
 
@@ -331,36 +282,11 @@ export const checkAchievements = mutation({
         .first();
       
       if (achievement) {
-        // Check if user already has this achievement
-        const existing = await ctx.db
-          .query("userAchievements")
-          .withIndex("by_user_achievement", (q) => 
-            q.eq("userId", args.userId).eq("achievementId", achievement._id)
-          )
-          .first();
-
-        if (!existing) {
-          // Award the achievement
-          await ctx.db.insert("userAchievements", {
-            userId: args.userId,
-            achievementId: achievement._id,
-            earnedAt: Date.now(),
-          });
-
-          // Create activity log
-          await ctx.db.insert("activities", {
-            userId: args.userId,
-            type: "ACHIEVEMENT_EARNED",
-            title: `Achievement Unlocked: ${achievement.name}`,
-            description: achievement.description,
-            data: JSON.stringify({
-              achievementId: achievement._id,
-            }),
-            createdAt: Date.now(),
-          });
-
-          awardedAchievements.push(achievement);
-        }
+        const result = await ctx.runMutation(api.achievements.awardAchievement, {
+          userId: args.userId,
+          achievementId: achievement._id,
+        });
+        if (result) awardedAchievements.push(achievement);
       }
     }
 
@@ -372,36 +298,11 @@ export const checkAchievements = mutation({
         .first();
       
       if (achievement) {
-        // Check if user already has this achievement
-        const existing = await ctx.db
-          .query("userAchievements")
-          .withIndex("by_user_achievement", (q) => 
-            q.eq("userId", args.userId).eq("achievementId", achievement._id)
-          )
-          .first();
-
-        if (!existing) {
-          // Award the achievement
-          await ctx.db.insert("userAchievements", {
-            userId: args.userId,
-            achievementId: achievement._id,
-            earnedAt: Date.now(),
-          });
-
-          // Create activity log
-          await ctx.db.insert("activities", {
-            userId: args.userId,
-            type: "ACHIEVEMENT_EARNED",
-            title: `Achievement Unlocked: ${achievement.name}`,
-            description: achievement.description,
-            data: JSON.stringify({
-              achievementId: achievement._id,
-            }),
-            createdAt: Date.now(),
-          });
-
-          awardedAchievements.push(achievement);
-        }
+        const result = await ctx.runMutation(api.achievements.awardAchievement, {
+          userId: args.userId,
+          achievementId: achievement._id,
+        });
+        if (result) awardedAchievements.push(achievement);
       }
     }
 
@@ -413,36 +314,11 @@ export const checkAchievements = mutation({
         .first();
       
       if (achievement) {
-        // Check if user already has this achievement
-        const existing = await ctx.db
-          .query("userAchievements")
-          .withIndex("by_user_achievement", (q) => 
-            q.eq("userId", args.userId).eq("achievementId", achievement._id)
-          )
-          .first();
-
-        if (!existing) {
-          // Award the achievement
-          await ctx.db.insert("userAchievements", {
-            userId: args.userId,
-            achievementId: achievement._id,
-            earnedAt: Date.now(),
-          });
-
-          // Create activity log
-          await ctx.db.insert("activities", {
-            userId: args.userId,
-            type: "ACHIEVEMENT_EARNED",
-            title: `Achievement Unlocked: ${achievement.name}`,
-            description: achievement.description,
-            data: JSON.stringify({
-              achievementId: achievement._id,
-            }),
-            createdAt: Date.now(),
-          });
-
-          awardedAchievements.push(achievement);
-        }
+        const result = await ctx.runMutation(api.achievements.awardAchievement, {
+          userId: args.userId,
+          achievementId: achievement._id,
+        });
+        if (result) awardedAchievements.push(achievement);
       }
     }
 

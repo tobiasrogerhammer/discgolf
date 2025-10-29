@@ -270,7 +270,7 @@ export function CourseCreationForm({ onSuccess }: { onSuccess?: () => void }) {
                           id={`distance-${hole.hole}`}
                           type="number"
                           value={hole.distanceMeters || ""}
-                          onChange={(e) => updateHole(hole.hole, 'distanceMeters', parseInt(e.target.value) || undefined)}
+                          onChange={(e) => updateHole(hole.hole, 'distanceMeters', parseInt(e.target.value) || 0)}
                           placeholder="e.g., 280"
                         />
                       </div>
