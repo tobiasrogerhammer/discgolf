@@ -104,8 +104,8 @@ export default function Home() {
   
   // Calculate user rank in leaderboard
   const userLeaderboardData = leaderboard && currentUser ? (() => {
-    const userEntry = leaderboard.find((entry: any) => entry.user._id === currentUser._id)
-    const userRank = leaderboard.findIndex((entry: any) => entry.user._id === currentUser._id) + 1
+    const userEntry = leaderboard.find((entry: any) => entry.userId === currentUser._id)
+    const userRank = leaderboard.findIndex((entry: any) => entry.userId === currentUser._id) + 1
     
     return {
       userRank: userRank || 0,
@@ -350,9 +350,9 @@ export default function Home() {
                 <div className="space-y-2">
                   {userLeaderboardData?.topPlayers?.map((entry: any, index: number) => (
                     <div
-                      key={entry.user._id}
+                      key={entry.userId}
                       className={`flex items-center justify-between p-2 rounded ${
-                        entry.user._id === currentUser?._id ? 'bg-primary/10' : ''
+                        entry.userId === currentUser?._id ? 'bg-primary/10' : ''
                       }`}
                     >
                       <div className="flex items-center gap-2">
@@ -365,7 +365,7 @@ export default function Home() {
                           {index + 1}
                         </div>
                         <span className="text-sm font-medium text-foreground">
-                          {entry.user.name || entry.user.username || 'Unknown'}
+                          {entry.name || entry.username || 'Unknown'}
                         </span>
                       </div>
                       <div className="text-sm font-bold text-foreground">

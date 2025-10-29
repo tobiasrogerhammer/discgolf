@@ -32,7 +32,9 @@ export default function FriendsPage() {
   const pendingRequests = useQuery(api.friends.getPendingRequests, 
     currentUser ? { userId: currentUser._id } : "skip"
   );
-  const leaderboard = useQuery(api.stats.getLeaderboard, {});
+  const leaderboard = useQuery(api.stats.getLeaderboard, 
+    currentUser ? { friendsOnly: true, userId: currentUser._id } : "skip"
+  );
 
   const inviteFriend = useMutation(api.friends.inviteFriend);
   const inviteFriendByUsername = useMutation(api.friends.inviteFriendByUsername);
@@ -423,9 +425,9 @@ export default function FriendsPage() {
           <CardContent>
             <div className="space-y-3">
               {leaderboard.slice(0, 10).map((entry, index) => (
-                entry && entry.user && (
+                entry && (
                   <div
-                    key={entry.user._id}
+                    key={entry.userId || `entry-${index}`}
                     className="flex items-center justify-between p-3 border rounded-lg"
                   >
                     <div className="flex items-center gap-3">
@@ -433,14 +435,13 @@ export default function FriendsPage() {
                         {index + 1}
                       </div>
                       <Avatar>
-                        <AvatarImage src={entry.user?.image || ''} />
                         <AvatarFallback>
-                          {entry.user?.name?.charAt(0) || entry.user?.email?.charAt(0) || '?'}
+                          {entry.name?.charAt(0) || entry.username?.charAt(0) || '?'}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <div className="font-medium">
-                          {entry.user?.name || entry.user?.email}
+                          {entry.name || entry.username}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           {entry.totalRounds} rounds

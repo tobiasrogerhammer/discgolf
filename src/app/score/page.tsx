@@ -130,9 +130,7 @@ function ScorePageContent() {
         const roundId = await createRound({
           userId: currentUser._id,
           courseId: courseId as any,
-          roundType: roundType as any,
           scores: roundScores,
-          weather: weather,
         });
 
         setSavedRoundId(roundId);

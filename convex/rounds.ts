@@ -6,7 +6,7 @@ import { v } from "convex/values";
 export const getByUser = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const rounds = await ctx.db
       .query("rounds")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .collect();
@@ -300,13 +300,6 @@ export const create = mutation({
       });
     }
 
-    // Create weather if provided
-    if (args.weather) {
-      await ctx.db.insert("weather", {
-        roundId,
-        ...args.weather,
-      });
-    }
 
     // Check for achievements after round completion
     try {
@@ -330,5 +323,13 @@ export const create = mutation({
     }
 
     return roundId;
+  },
+});
+
+export const share = mutation({
+  args: { id: v.id("rounds") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { shared: true });
+    return { shareUrl: `/rounds/${args.id}` };
   },
 });

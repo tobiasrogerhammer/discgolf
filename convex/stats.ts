@@ -62,12 +62,34 @@ export const getLeaderboard = query({
           .withIndex("by_user", (q) => q.eq("userId", user._id))
           .collect();
 
+        // Calculate average score from rounds
+        let totalScore = 0;
+        let roundsWithScores = 0;
+        
+        for (const round of rounds) {
+          const scores = await ctx.db
+            .query("scores")
+            .withIndex("by_round", (q) => q.eq("roundId", round._id))
+            .collect();
+          
+          if (scores.length > 0) {
+            const roundTotal = scores.reduce((sum, score) => sum + score.strokes, 0);
+            totalScore += roundTotal;
+            roundsWithScores++;
+          }
+        }
+        
+        const averageScore = roundsWithScores > 0 ? totalScore / roundsWithScores : 0;
+
+        // Extract name from email if no name/username is available
+        const emailName = user.email ? user.email.split('@')[0] : 'User';
+        
         return {
           userId: user._id,
           username: user.username || user.email,
-          name: user.name || user.username || user.email,
+          name: user.name || user.username || emailName,
           totalRounds: rounds.length,
-          averageScore: 0,
+          averageScore: averageScore,
         };
       })
     );
