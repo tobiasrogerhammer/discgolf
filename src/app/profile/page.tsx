@@ -195,13 +195,13 @@ export default function ProfilePage() {
                       <div className="space-y-2">
                         {leaderboard.slice(0, 3).map((player, index) => {
                           if (!player) return null;
-                          const isCurrentUser = currentUser && player.user._id === currentUser._id;
+                          const isCurrentUser = currentUser && player.userId === currentUser._id;
                           const rank = index + 1;
                           const rankEmoji = rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉";
                           
                           return (
                             <div
-                              key={player.user._id}
+                              key={player.userId || `player-${index}`}
                               className={`flex items-center gap-3 p-3 rounded-lg border ${
                                 isCurrentUser 
                                   ? 'bg-primary/10 border-primary/20' 
@@ -215,7 +215,7 @@ export default function ProfilePage() {
                                 <div className={`font-medium truncate ${
                                   isCurrentUser ? 'text-primary' : ''
                                 }`}>
-                                  {isCurrentUser ? 'You' : (player.user.username || player.user.name || 'Anonymous')}
+                                  {isCurrentUser ? 'You' : (player.name || player.username || 'Anonymous')}
                                   {isCurrentUser && <span className="ml-2 text-xs">(You)</span>}
                                 </div>
                                 <div className="text-sm text-muted-foreground">
@@ -227,7 +227,7 @@ export default function ProfilePage() {
                                   #{rank}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  Best: {player.bestScore}
+                                  Avg: {player.averageScore.toFixed(1)}
                                 </div>
                               </div>
                             </div>
@@ -240,7 +240,7 @@ export default function ProfilePage() {
                   {/* Current User's Position (if not in top 3) */}
                   {currentUser && leaderboard.length > 3 && (
                     (() => {
-                      const userIndex = leaderboard.findIndex(p => p && p.user._id === currentUser._id);
+                      const userIndex = leaderboard.findIndex(p => p && p.userId === currentUser._id);
                       if (userIndex >= 3) {
                         const userRank = userIndex + 1;
                         const userPlayer = leaderboard[userIndex];
@@ -265,7 +265,7 @@ export default function ProfilePage() {
                                   #{userRank}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  Best: {userPlayer.bestScore}
+                                  Avg: {userPlayer.averageScore.toFixed(1)}
                                 </div>
                               </div>
                             </div>
@@ -289,7 +289,7 @@ export default function ProfilePage() {
                     <div className="text-center">
                       <div className="text-2xl font-bold text-primary">
                         {currentUser ? (() => {
-                          const userIndex = leaderboard.findIndex(p => p && p.user._id === currentUser._id);
+                          const userIndex = leaderboard.findIndex(p => p && p.userId === currentUser._id);
                           return userIndex >= 0 ? `#${userIndex + 1}` : 'N/A';
                         })() : 'N/A'}
                       </div>
