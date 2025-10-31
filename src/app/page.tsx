@@ -8,6 +8,33 @@ import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { BarChart3, Target, Trophy, Flame, Star, Bird, Disc3, Users, Brain } from 'lucide-react'
+import Image from 'next/image'
+
+function DgBasketIcon({ className, size = 35 }: { className?: string; size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 128 128"
+      className={className}
+    >
+      <g fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="40" y="24" width="48" height="8" rx="2" />
+        <line x1="64" y1="32" x2="64" y2="66" />
+        <line x1="54" y1="32" x2="58" y2="66" />
+        <line x1="74" y1="32" x2="70" y2="66" />
+        <line x1="46" y1="32" x2="52" y2="66" />
+        <line x1="82" y1="32" x2="76" y2="66" />
+        <rect x="36" y="66" width="56" height="8" rx="2" />
+        <line x1="40" y1="66" x2="40" y2="74" />
+        <line x1="88" y1="66" x2="88" y2="74" />
+        <line x1="64" y1="74" x2="64" y2="104" />
+        <line x1="50" y1="104" x2="78" y2="104" />
+      </g>
+    </svg>
+  )
+}
 export default function Home() {
   const { user, currentUser, isLoaded } = useCurrentUser()
   
@@ -290,13 +317,15 @@ export default function Home() {
               const range = maxVal - minVal || 1
               
               return (
-                <Card key={statKey} className={colors.bg}>
-                  <CardContent className="p-3">
-                    <div className="flex flex-col items-center gap-2">
+                <Card key={statKey} className={`${colors.bg} h-full`}>
+                  <CardContent className="p-3 h-full">
+                    <div className="flex flex-col items-center justify-center gap-2 h-full">
                       {/* Icon */}
-                      <div className={`${colors.iconBg} w-10 h-10 rounded-lg flex items-center justify-center`}>
-                        <IconComponent className="w-6 h-6 text-white" />
-                      </div>
+                      {statKey === 'totalRounds' ? (
+                        <DgBasketIcon className={colors.text} size={38} />
+                      ) : (
+                        <IconComponent className={`${colors.text} w-8 h-8`} />
+                      )}
                       
                       {/* Value with arrow */}
                       <div className="flex items-center gap-1">
