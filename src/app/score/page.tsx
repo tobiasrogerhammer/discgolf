@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,8 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { CaddyAssistant } from '@/components/CaddyAssistant';
 import { MultiPlayerScoreInput } from '@/components/MultiPlayerScoreInput';
 import { RoundRecap } from '@/components/RoundRecap';
-import { ArrowLeft, Target, MapPin, Clock, Users } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Users } from 'lucide-react';
+import DgBasketIcon from '@/components/DgBasketIcon';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 interface Participant {
@@ -28,7 +29,7 @@ interface ScoreData {
   };
 }
 
-export default function ScorePage() {
+function ScorePageContent() {
   const { user, currentUser } = useCurrentUser();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -87,14 +88,14 @@ export default function ScorePage() {
       
       // Initialize current user scores (use 'you' as key to match MultiPlayerScoreInput)
       initialScores['you'] = {};
-      courseHoles.forEach((hole, index) => {
+      courseHoles.forEach((hole: { hole: number; par: number }, index: number) => {
         initialScores['you'][index] = hole.par;
       });
 
       // Initialize participant scores
       participants.forEach(participant => {
         initialScores[participant.id] = {};
-        courseHoles.forEach((hole, index) => {
+        courseHoles.forEach((hole: { hole: number; par: number }, index: number) => {
           initialScores[participant.id][index] = hole.par;
         });
       });
@@ -122,7 +123,7 @@ export default function ScorePage() {
       if (participants.length === 0) {
         // Solo round
         const playerScores = scores['you'] || {};
-        const roundScores = courseHoles?.map((hole, index) => ({
+        const roundScores = courseHoles?.map((hole: { hole: number; par: number }, index: number) => ({
           hole: hole.hole,
           strokes: playerScores[index] || hole.par,
         })) || [];
@@ -130,9 +131,7 @@ export default function ScorePage() {
         const roundId = await createRound({
           userId: currentUser._id,
           courseId: courseId as any,
-          roundType: roundType as any,
           scores: roundScores,
-          weather: weather,
         });
 
         setSavedRoundId(roundId);
@@ -142,7 +141,7 @@ export default function ScorePage() {
         const allParticipants = [
           {
             userId: currentUser._id,
-            scores: courseHoles?.map((hole, index) => ({
+            scores: courseHoles?.map((hole: { hole: number; par: number }, index: number) => ({
               hole: hole.hole,
               strokes: scores['you']?.[index] || hole.par,
             })) || [],
@@ -151,7 +150,7 @@ export default function ScorePage() {
             userId: p.type === 'user' ? p.userId as any : undefined,
             guestName: p.type === 'guest' ? p.name : undefined,
             guestEmail: p.type === 'guest' ? p.guestEmail : undefined,
-            scores: courseHoles?.map((hole, index) => ({
+            scores: courseHoles?.map((hole: { hole: number; par: number }, index: number) => ({
               hole: hole.hole,
               strokes: scores[p.id]?.[index] || hole.par,
             })) || [],
@@ -249,34 +248,38 @@ export default function ScorePage() {
         </div>
       </div>
 
-      {/* Main Content - Centered Score Input */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 space-y-4">
-        {/* Caddy Assistant */}
-        {courseHoles && scores['you'] && (
-          <div className="w-full max-w-md">
-            <CaddyAssistant
-              currentHole={currentHole}
-              totalHoles={courseHoles.length}
-              currentScore={Object.values(scores['you']).slice(0, currentHole - 1).reduce((sum, score) => sum + score, 0)}
-              coursePar={courseHoles.reduce((sum, hole) => sum + hole.par, 0)}
-              scores={scores['you']}
-              courseHoles={courseHoles}
-            />
-          </div>
-        )}
-        
-        {/* Score Input */}
-        {courseHoles && (
-          <div className="w-full max-w-md">
-            <MultiPlayerScoreInput 
-              courseHoles={courseHoles}
-              participants={participants}
-              onScoresChange={setScores}
-              onRoundComplete={handleRoundComplete}
-              onCurrentHoleChange={setCurrentHole}
-            />
-          </div>
-        )}
+      {/* Main Content - Combined Score and Map */}
+      <div className="flex-1 flex flex-col overflow-y-auto">
+        <div className="flex flex-col items-center justify-center p-4 space-y-4 min-h-full">
+          {/* Caddy Assistant */}
+          {courseHoles && scores['you'] && (
+            <div className="w-full max-w-2xl">
+              <CaddyAssistant
+                currentHole={currentHole}
+                totalHoles={courseHoles.length}
+                currentScore={Object.values(scores['you']).slice(0, currentHole - 1).reduce((sum, score) => sum + score, 0)}
+                coursePar={courseHoles.reduce((sum: number, hole: { hole: number; par: number }) => sum + hole.par, 0)}
+                scores={scores['you']}
+                courseHoles={courseHoles}
+              />
+            </div>
+          )}
+          
+          {/* Score Input with Integrated Map */}
+          {courseHoles && (
+            <div className="w-full max-w-2xl">
+              <MultiPlayerScoreInput 
+                courseHoles={courseHoles}
+                courseId={courseId || undefined}
+                participants={participants}
+                onScoresChange={setScores}
+                onRoundComplete={handleRoundComplete}
+                onCurrentHoleChange={setCurrentHole}
+                initialCurrentHole={currentHole}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Bottom Section - Status and Save Button */}
@@ -313,11 +316,11 @@ export default function ScorePage() {
             totalStrokes: participants.length === 0 
               ? Object.values(scores['you'] || {}).reduce((sum, score) => sum + score, 0)
               : Object.values(scores['you'] || {}).reduce((sum, score) => sum + score, 0),
-            coursePar: courseHoles.reduce((sum, hole) => sum + hole.par, 0),
+            coursePar: courseHoles.reduce((sum: number, hole: { hole: number; par: number }) => sum + hole.par, 0),
             roundType: roundType,
             startedAt: Date.now() - (2 * 60 * 60 * 1000), // Approximate start time
             completedAt: Date.now(),
-            scores: courseHoles.map((hole, index) => ({
+            scores: courseHoles.map((hole: { hole: number; par: number }, index: number) => ({
               hole: hole.hole,
               strokes: scores['you']?.[index] || hole.par,
               par: hole.par,
@@ -338,5 +341,20 @@ export default function ScorePage() {
         />
       )}
     </div>
+  );
+}
+
+export default function ScorePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-pulse text-center">
+          <div className="w-8 h-8 bg-gray-200 rounded-full mx-auto mb-2"></div>
+          <div className="text-sm text-muted-foreground">Loading...</div>
+        </div>
+      </div>
+    }>
+      <ScorePageContent />
+    </Suspense>
   );
 }

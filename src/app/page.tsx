@@ -7,7 +7,8 @@ import { UserButton } from '@clerk/nextjs'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
-import { BarChart3, Target, Trophy, Flame, Star, Bird, Disc3, Users, Brain } from 'lucide-react'
+import { BarChart3, Trophy, Flame, Star, Bird, Disc3, Users, Brain } from 'lucide-react'
+import DgBasketIcon from '@/components/DgBasketIcon'
 export default function Home() {
   const { user, currentUser, isLoaded } = useCurrentUser()
   
@@ -34,7 +35,18 @@ export default function Home() {
         return holeData && score.strokes === holeData.par - 1
       }).length
     }, 0),
-    averageScore: rounds.length > 0 ? Math.round(rounds.reduce((sum, round) => sum + (round.totalStrokes || 0), 0) / rounds.length) : 0,
+    averageScore: (() => {
+      const roundsWithRatings = rounds.filter(round => {
+        const rating = (round as any).rating;
+        return rating !== undefined && rating !== null && typeof rating === 'number';
+      });
+      if (roundsWithRatings.length === 0) return 0;
+      const totalRatings = roundsWithRatings.reduce((sum, round) => {
+        const rating = (round as any).rating;
+        return sum + (rating || 0);
+      }, 0);
+      return Math.round(totalRatings / roundsWithRatings.length);
+    })(),
     consistency: rounds.length > 1 ? Math.round(rounds.reduce((sum, round) => sum + Math.abs((round.totalStrokes || 0) - (rounds.reduce((s, r) => s + (r.totalStrokes || 0), 0) / rounds.length)), 0) / rounds.length) : 0,
     improvement: rounds.length > 1 ? (() => {
       const recent = rounds.slice(-5).reduce((sum, round) => sum + (round.totalStrokes || 0), 0) / Math.min(5, rounds.length)
@@ -104,19 +116,19 @@ export default function Home() {
   
   // Calculate user rank in leaderboard
   const userLeaderboardData = leaderboard && currentUser ? (() => {
-    const userEntry = leaderboard.find((entry: any) => entry.user._id === currentUser._id)
-    const userRank = leaderboard.findIndex((entry: any) => entry.user._id === currentUser._id) + 1
+    const userEntry = leaderboard.find((entry: any) => entry.userId === currentUser._id)
+    const userRank = leaderboard.findIndex((entry: any) => entry.userId === currentUser._id) + 1
     
     return {
       userRank: userRank || 0,
       userEntry,
-      topPlayers: leaderboard.slice(0, 5) // Top 5 players
+      topPlayers: leaderboard.slice(0, 3) // Top 3 players (pole positions)
     }
   })() : null
 
   if (!isLoaded || (user && rounds === undefined)) {
     return (
-      <main className="h-[calc(100vh-4rem)] flex flex-col p-3 bg-background overflow-hidden">
+      <main className="h-[calc(100vh-4rem)] flex flex-col p-3 bg-background overflow-y-auto">
         <div className="text-center py-3 flex-shrink-0">
           <div className="flex justify-center mb-2">
             <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
@@ -142,7 +154,7 @@ export default function Home() {
 
   if (!user) {
     return (
-      <main className="h-dvh flex flex-col items-center justify-center p-6 bg-background overflow-hidden">
+      <main className="h-dvh flex flex-col items-center justify-center p-6 bg-background overflow-y-auto">
         <div className="w-full max-w-md space-y-8 text-center">
           {/* Logo */}
           <div className="flex justify-center">
@@ -201,7 +213,7 @@ export default function Home() {
   }
 
   return (
-    <main className="h-[calc(100vh-4rem)] flex flex-col p-3 bg-background overflow-hidden">
+    <main className="h-[calc(100vh-4rem)] flex flex-col p-3 bg-background overflow-y-auto">
       {/* Header */}
       <div className="text-center py-3 flex-shrink-0">
         <div className="flex justify-center mb-2">
@@ -229,7 +241,7 @@ export default function Home() {
                 bestScore: 'Best',
                 totalAces: 'Aces',
                 totalBirdies: 'Birdies',
-                averageScore: 'Average',
+                averageScore: 'Average PDGA Rating',
                 consistency: 'Consistency',
                 improvement: 'Improvement',
                 coursesPlayed: 'Courses',
@@ -248,9 +260,9 @@ export default function Home() {
               
               const colors = statColors[statKey] || statColors.averageScore
               
-              const statIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+              const statIcons: Record<string, React.ComponentType<{ className?: string; size?: number }>> = {
                 averageScore: BarChart3,
-                totalRounds: Target,
+                totalRounds: DgBasketIcon,
                 weeklyStreak: Flame,
                 bestScore: Trophy,
                 totalAces: Star,
@@ -264,21 +276,49 @@ export default function Home() {
                 if (!rounds) return []
                 
                 if (statKey === 'averageScore') {
-                  // Calculate rolling average for each round
+                  // Calculate rolling average PDGA rating for each round
                   return rounds.slice(-10).map((_, idx, arr) => {
-                    const recentRounds = arr.slice(0, idx + 1)
-                    return recentRounds.reduce((sum, r) => sum + (r.totalStrokes || 0), 0) / recentRounds.length
+                    const recentRounds = arr.slice(0, idx + 1).filter(r => {
+                      const rating = (r as any).rating;
+                      return rating !== undefined && rating !== null && typeof rating === 'number';
+                    });
+                    if (recentRounds.length === 0) return 0;
+                    return recentRounds.reduce((sum, r) => {
+                      const rating = (r as any).rating;
+                      return sum + (rating || 0);
+                    }, 0) / recentRounds.length;
                   })
                 } else if (statKey === 'totalRounds') {
-                  // Count of rounds
-                  return rounds.slice(-10).map((_, idx) => idx + 1)
+                  // Show actual round count progression over time
+                  return rounds.slice(-10).map((_, idx) => {
+                    return rounds.length - (10 - idx - 1)
+                  })
                 } else if (statKey === 'weeklyStreak') {
-                  // Rolling weekly streak
+                  // Calculate actual weekly streak progression
                   return rounds.slice(-10).map((_, idx) => {
                     const recent = rounds.slice(0, rounds.length - (10 - idx))
-                    if (recent.length < 7) return 0
-                    const weeks = Math.floor(recent.length / 7)
-                    return weeks
+                    if (recent.length === 0) return 0
+                    
+                    const now = Date.now()
+                    const weekMs = 7 * 24 * 60 * 60 * 1000
+                    const roundsByWeek = new Map<number, number[]>()
+                    recent.forEach(round => {
+                      const weekNum = Math.floor((now - (round.startedAt || round._creationTime || now)) / weekMs)
+                      if (!roundsByWeek.has(weekNum)) {
+                        roundsByWeek.set(weekNum, [])
+                      }
+                      roundsByWeek.get(weekNum)!.push(round.totalStrokes || 0)
+                    })
+                    
+                    let streak = 0
+                    for (let weekOffset = 0; weekOffset < 100; weekOffset++) {
+                      if (roundsByWeek.has(weekOffset) && roundsByWeek.get(weekOffset)!.length > 0) {
+                        streak++
+                      } else {
+                        break
+                      }
+                    }
+                    return streak
                   })
                 }
                 return []
@@ -290,13 +330,15 @@ export default function Home() {
               const range = maxVal - minVal || 1
               
               return (
-                <Card key={statKey} className={colors.bg}>
-                  <CardContent className="p-3">
-                    <div className="flex flex-col items-center gap-2">
+                <Card key={statKey} className={`${colors.bg} h-full`}>
+                  <CardContent className="p-3 h-full">
+                    <div className="flex flex-col items-center justify-center gap-2 h-full">
                       {/* Icon */}
-                      <div className={`${colors.iconBg} w-10 h-10 rounded-lg flex items-center justify-center`}>
-                        <IconComponent className="w-6 h-6 text-white" />
-                      </div>
+                      {statKey === 'totalRounds' ? (
+                        <DgBasketIcon className={colors.text} size={38} />
+                      ) : (
+                        <IconComponent className={`${colors.text} w-8 h-8`} />
+                      )}
                       
                       {/* Value with arrow */}
                       <div className="flex items-center gap-1">
@@ -314,17 +356,52 @@ export default function Home() {
                       {/* Mini line graph */}
                       {statHistory.length > 0 && (
                         <div className="w-full">
-                          <svg width="100%" height="30" viewBox="0 0 100 30" className="mt-1">
+                          <svg width="100%" height="40" viewBox="0 0 100 40" className="mt-1">
+                            {/* Fill area under the line for better visualization */}
+                            <defs>
+                              <linearGradient id={`gradient-${statKey}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stopColor="currentColor" stopOpacity="0.3" />
+                                <stop offset="100%" stopColor="currentColor" stopOpacity="0.05" />
+                              </linearGradient>
+                            </defs>
+                            {/* Filled area under the line */}
+                            <path
+                              d={`M 0,40 ${statHistory.map((val, idx) => {
+                                const x = (idx / Math.max(1, statHistory.length - 1)) * 100
+                                const y = 40 - ((val - minVal) / range) * 35
+                                return `L ${x},${y}`
+                              }).join(' ')} L 100,40 Z`}
+                              fill={`url(#gradient-${statKey})`}
+                              className={colors.graph}
+                            />
+                            {/* Line graph */}
                             <polyline
                               points={statHistory.map((val, idx) => {
                                 const x = (idx / Math.max(1, statHistory.length - 1)) * 100
-                                const y = 30 - ((val - minVal) / range) * 30
+                                const y = 40 - ((val - minVal) / range) * 35
                                 return `${x},${y}`
                               }).join(' ')}
                               fill="none"
-                              strokeWidth="2"
+                              strokeWidth="2.5"
                               className={colors.graph}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
                             />
+                            {/* Add dots at data points for rounds and weeklyStreak */}
+                            {(statKey === 'totalRounds' || statKey === 'weeklyStreak') && statHistory.map((val, idx) => {
+                              const x = (idx / Math.max(1, statHistory.length - 1)) * 100
+                              const y = 40 - ((val - minVal) / range) * 35
+                              return (
+                                <circle
+                                  key={idx}
+                                  cx={x}
+                                  cy={y}
+                                  r="2.5"
+                                  className={colors.graph}
+                                  fill="currentColor"
+                                />
+                              )
+                            })}
                           </svg>
                         </div>
                       )}
@@ -343,43 +420,61 @@ export default function Home() {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-center gap-2">
                   <Trophy className="w-5 h-5 text-primary" />
-                  <CardTitle className="text-base">Leaderboard</CardTitle>
+                  <CardTitle className="text-base"> All users Leaderboard</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className="p-3">
-                <div className="space-y-2">
-                  {userLeaderboardData?.topPlayers?.map((entry: any, index: number) => (
-                    <div
-                      key={entry.user._id}
-                      className={`flex items-center justify-between p-2 rounded ${
-                        entry.user._id === currentUser?._id ? 'bg-primary/10' : ''
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${
-                          index === 0 ? 'bg-yellow-500 text-white' : 
-                          index === 1 ? 'bg-gray-400 text-white' : 
-                          index === 2 ? 'bg-orange-500 text-white' : 
-                          'bg-gray-100 text-gray-600'
-                        }`}>
-                          {index + 1}
-                        </div>
-                        <span className="text-sm font-medium text-foreground">
-                          {entry.user.name || entry.user.username || 'Unknown'}
-                        </span>
+              <CardContent className="px-4">
+                {userLeaderboardData?.topPlayers?.length ? (
+                  <div className="grid grid-cols-3 items-end gap-3">
+                    {/* 2nd place */}
+                    <div className="flex flex-col items-center">
+                      <Trophy className="w-6 h-6 text-gray-400 mb-1" />
+                      <div className="h-20 w-full rounded-md bg-muted/70 flex items-end justify-center">
+                        <div className="mb-2 text-xs font-semibold text-muted-foreground">2</div>
                       </div>
-                      <div className="text-sm font-bold text-foreground">
-                        {entry.averageScore.toFixed(1)}
+                      <div className="mt-2 text-center text-sm font-medium truncate w-full">
+                        {(userLeaderboardData.topPlayers[1]?.username) || (userLeaderboardData.topPlayers[1]?.name) || ''}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {userLeaderboardData.topPlayers[1]?.averageScore?.toFixed?.(1) || ''}
                       </div>
                     </div>
-                  ))}
-                  
-                  {userLeaderboardData && userLeaderboardData.userRank > 5 && (
-                    <div className="pt-2 border-t text-center text-xs text-muted-foreground">
-                      Your rank: #{userLeaderboardData.userRank}
+
+                    {/* 1st place */}
+                    <div className="flex flex-col items-center">
+                      <Trophy className="w-7 h-7 text-yellow-500 mb-1" />
+                      <div className="h-28 w-full rounded-md bg-yellow-500/90 flex items-end justify-center text-white">
+                        <div className="mb-2 text-xs font-semibold">1</div>
+                      </div>
+                      <div className="mt-2 text-center text-sm font-semibold truncate w-full">
+                        {(userLeaderboardData.topPlayers[0]?.username) || (userLeaderboardData.topPlayers[0]?.name) || ''}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {userLeaderboardData.topPlayers[0]?.averageScore?.toFixed?.(1) || ''}
+                      </div>
                     </div>
-                  )}
-                </div>
+
+                    {/* 3rd place */}
+                    <div className="flex flex-col items-center">
+                      <Trophy className="w-6 h-6 text-orange-500 mb-1" />
+                      <div className="h-16 w-full rounded-md bg-orange-400/80 flex items-end justify-center text-white">
+                        <div className="mb-2 text-xs font-semibold">3</div>
+                      </div>
+                      <div className="mt-2 text-center text-sm font-medium truncate w-full">
+                        {(userLeaderboardData.topPlayers[2]?.username) || (userLeaderboardData.topPlayers[2]?.name) || ''}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {userLeaderboardData.topPlayers[2]?.averageScore?.toFixed?.(1) || ''}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {userLeaderboardData && userLeaderboardData.userRank > 3 && (
+                  <div className="pt-3 text-center text-xs text-muted-foreground">
+                    Your rank: #{userLeaderboardData.userRank}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

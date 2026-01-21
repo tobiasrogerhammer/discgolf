@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
-import { internal, api } from "./_generated/api";
+import { api } from "./_generated/api";
 import { v } from "convex/values";
+import { calculateRating } from "./pdgaRating";
 
 export const createGroupRound = mutation({
   args: {
@@ -46,6 +47,15 @@ export const createGroupRound = mutation({
     const roundIds = [];
     for (const participant of args.participants) {
       const totalStrokes = participant.scores.reduce((sum, score) => sum + score.strokes, 0);
+      // Compute course par once
+      const courseHoles = await ctx.db
+        .query("courseHoles")
+        .withIndex("by_course", (q) => q.eq("courseId", args.courseId))
+        .collect();
+      const totalPar = courseHoles.reduce((sum, h) => sum + (h.par || 0), 0);
+      
+      // Calculate PDGA rating if applicable
+      const rating = await calculateRating(ctx, args.courseId, totalStrokes);
       
       // Create the round
       const roundId = await ctx.db.insert("rounds", {
@@ -54,6 +64,9 @@ export const createGroupRound = mutation({
         startedAt: now,
         completed: true,
         totalStrokes,
+        totalPar,
+        relativeToPar: totalPar > 0 ? totalStrokes - totalPar : undefined,
+        rating: rating || undefined,
         roundType: args.roundType,
         notes: args.notes,
         shared: false,

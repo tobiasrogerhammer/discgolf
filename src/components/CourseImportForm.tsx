@@ -14,7 +14,7 @@ import { Upload, FileText, CheckCircle } from "lucide-react";
 interface CourseImportData {
   name: string;
   location: string;
-  holes: number;
+  holeCount: number;
   difficulty: string;
   holes: Array<{
     hole: number;
@@ -70,7 +70,7 @@ export function CourseImportForm({ onSuccess }: { onSuccess?: () => void }) {
       }
       // Number of holes
       else if (line.match(/^\d+\s+holes?$/i)) {
-        currentCourse.holes = parseInt(line.match(/\d+/)?.[0] || '18');
+        currentCourse.holeCount = parseInt(line.match(/\d+/)?.[0] || '18');
       }
     }
 

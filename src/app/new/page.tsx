@@ -13,7 +13,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { FriendSelector } from '@/components/FriendSelector';
 import { CourseDetails } from '@/components/CourseDetails';
 import { StartRoundModal } from '@/components/StartRoundModal';
-import { Search, Heart, MapPin, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Heart, MapPin, Calendar, ChevronDown, ChevronRight, Pin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface Participant {
@@ -41,10 +41,10 @@ export default function NewGamePage() {
   const courses = useQuery(api.courses.getAll);
   const { toast } = useToast();
 
-  const selectedCourseData = courses?.find(c => c._id === selectedCourseId);
+  const selectedCourseData = courses?.find((c: { _id: string }) => c._id === selectedCourseId);
 
   // Filter courses based on search query
-  const filteredCourses = courses?.filter(course =>
+  const filteredCourses = courses?.filter((course: { name: string; location?: string }) =>
     course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (course.location && course.location.toLowerCase().includes(searchQuery.toLowerCase()))
   ) || [];
@@ -80,7 +80,7 @@ export default function NewGamePage() {
     return (
     <div className="p-3 space-y-4">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-[var(--foreground)]">New Round</h1>
+        <h1 className="text-3xl font-bold text-[var(--foreground)]">New Round</h1>
         <p className="text-sm text-[var(--muted-foreground)]">
           Choose a course and start your disc golf round
         </p>
@@ -101,7 +101,7 @@ export default function NewGamePage() {
         {/* Course List */}
         <div className="space-y-3">
           {filteredCourses.length > 0 ? (
-            filteredCourses.map((course) => (
+            filteredCourses.map((course: { _id: string; name: string; location?: string; holes: number; difficulty?: string; estimatedLengthMeters?: number }) => (
               <div key={course._id} className="space-y-2">
                 <Card className="hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
@@ -154,7 +154,7 @@ export default function NewGamePage() {
                           className="flex-1 h-10 flex items-center justify-center gap-1"
                         >
                           <span>Details</span>
-                          {expandedCourseId === course._id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                          {expandedCourseId === course._id ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                         </Button>
                       </div>
                     </div>

@@ -6,8 +6,11 @@ import { api } from '../../convex/_generated/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Heart, MapPin, Calendar, Target, Star, Clock, Ruler, Trophy, TrendingUp, Footprints, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
+import { Heart, MapPin, Calendar, Star, Clock, Ruler, Trophy, TrendingUp, Footprints, BarChart3, ChevronDown, ChevronUp, Map } from 'lucide-react';
+import DgBasketIcon from '@/components/DgBasketIcon';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import CourseMapWrapper from '@/components/CourseMapWrapper';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface CourseDetailsProps {
   course: any;
@@ -17,6 +20,7 @@ interface CourseDetailsProps {
 
 export function CourseDetails({ course, onStartGame, isExpanded }: CourseDetailsProps) {
   const { currentUser } = useCurrentUser();
+  const [activeTab, setActiveTab] = useState<'details' | 'map'>('details');
 
   const courseHoles = useQuery(api.courses.getHoles, 
     course._id ? { courseId: course._id as any } : "skip"
@@ -39,8 +43,8 @@ export function CourseDetails({ course, onStartGame, isExpanded }: CourseDetails
     }
   };
 
-  const totalPar = courseHoles?.reduce((sum, hole) => sum + hole.par, 0) || 0;
-  const totalDistance = courseHoles?.reduce((sum, hole) => sum + (hole.distanceMeters || 0), 0) || 0;
+  const totalPar = courseHoles?.reduce((sum: number, hole: { hole: number; par: number }) => sum + hole.par, 0) || 0;
+  const totalDistance = courseHoles?.reduce((sum: number, hole: { distanceMeters?: number }) => sum + (hole.distanceMeters || 0), 0) || 0;
   const averagePar = courseHoles?.length ? (totalPar / courseHoles.length).toFixed(1) : 0;
   const averageDistance = courseHoles?.length ? Math.round(totalDistance / courseHoles.length) : 0;
   
@@ -50,7 +54,7 @@ export function CourseDetails({ course, onStartGame, isExpanded }: CourseDetails
   const playTimeMinutes = estimatedPlayTime % 60;
   
   // Calculate distance range
-  const distances = courseHoles?.map(hole => hole.distanceMeters || 0).filter(d => d > 0) || [];
+  const distances = courseHoles?.map((hole: { distanceMeters?: number }) => hole.distanceMeters || 0).filter((d: number) => d > 0) || [];
   const minDistance = distances.length ? Math.min(...distances) : 0;
   const maxDistance = distances.length ? Math.max(...distances) : 0;
   
@@ -73,7 +77,7 @@ export function CourseDetails({ course, onStartGame, isExpanded }: CourseDetails
   if (!isExpanded) return null;
 
   return (
-        <Card className="border-2">
+        <div className="border-2 rounded-xl overflow-hidden shadow-sm bg-card text-card-foreground">
           {/* Header */}
           <div className="bg-gradient-to-r from-primary/10 to-accent/10 p-4 border-b">
             <div className="flex items-start justify-between">
@@ -113,7 +117,7 @@ export function CourseDetails({ course, onStartGame, isExpanded }: CourseDetails
             <div className="grid grid-cols-3 gap-2">
               <div className="text-center p-2 bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg border">
                 <div className="flex items-center justify-center mb-1">
-                  <Target className="h-3 w-3 text-primary" />
+                  <DgBasketIcon className="h-7 w-7 text-primary" size={100} />
                 </div>
                 <div className="text-sm font-bold text-primary">{course.holes}</div>
                 <div className="text-xs text-muted-foreground">Holes</div>
@@ -123,7 +127,7 @@ export function CourseDetails({ course, onStartGame, isExpanded }: CourseDetails
                   <Ruler className="h-3 w-3 text-green-600" />
                 </div>
                 <div className="text-sm font-bold text-green-600">
-                  {isEkeberg ? '1217m' : isKrokhol ? '2125m' : (totalDistance > 0 ? `${Math.round(totalDistance)}m` : 'N/A')}
+                  {totalDistance > 0 ? `${Math.round(totalDistance)}m` : 'N/A'}
                 </div>
                 <div className="text-xs text-muted-foreground">Distance</div>
               </div>
@@ -131,7 +135,7 @@ export function CourseDetails({ course, onStartGame, isExpanded }: CourseDetails
                 <div className="flex items-center justify-center mb-1">
                   <Star className="h-3 w-3 text-accent" />
                 </div>
-                <div className="text-sm font-bold text-accent">{isEkeberg ? '170' : isKrokhol ? '226' : totalPar}</div>
+                <div className="text-sm font-bold text-accent">{totalPar || 'N/A'}</div>
                 <div className="text-xs text-muted-foreground">Par</div>
               </div>
               <div className="text-center p-2 bg-gradient-to-br from-blue-500/5 to-blue-500/10 rounded-lg border">
@@ -171,56 +175,130 @@ export function CourseDetails({ course, onStartGame, isExpanded }: CourseDetails
                   'Distance information not available')}
               </p>
             </div>
-
-            {/* Hole Details */}
-            {courseHoles && courseHoles.length > 0 && (
-              <div className="border rounded-lg">
-                <div className="p-3 border-b">
-                  <h4 className="flex items-center gap-2 text-base font-semibold">
-                    <Target className="h-4 w-4 text-primary" />
-                    Hole Details
-                  </h4>
-                  <p className="text-xs text-muted-foreground">
-                    Distance and par for each hole
-                  </p>
-                </div>
-                <div className="p-3">
-                  {/* Table Header */}
-                  <div className="grid grid-cols-3 gap-2 mb-2 font-semibold text-xs text-muted-foreground border-b pb-1">
-                    <div>HOLES</div>
-                    <div>DIST</div>
-                    <div>PAR</div>
-                  </div>
-                  
-                  {/* Holes 1-9 */}
-                  <div className="space-y-0.5 mb-3">
-                    {courseHoles.slice(0, 9).map((hole) => (
-                      <div key={hole.hole} className="grid grid-cols-3 gap-2 text-xs">
-                        <div className="font-medium">Hole {hole.hole}</div>
-                        <div className="text-muted-foreground">
-                          {hole.distanceMeters ? `${hole.distanceMeters}m` : 'N/A'}
+      
+            {/* Course Map Tab - Only show tabs if map data is available */}
+            {courseHoles && courseHoles.some(h => h.teeLat && h.teeLon && h.basketLat && h.basketLon) ? (
+              <div className="pt-4 border-t mt-4">
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'details' | 'map')} className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="details">Details</TabsTrigger>
+                    <TabsTrigger value="map">
+                      <Map className="h-3 w-3 mr-1" />
+                      Course Map
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="details" className="mt-0">
+                    {/* Hole Details */}
+                    {courseHoles && courseHoles.length > 0 && (
+                      <div className="border rounded-lg">
+                        <div className="p-3 border-b">
+                          <h4 className="flex items-center gap-2 text-base font-semibold">
+                            <DgBasketIcon className="h-8 w-8 text-primary" size={100} />
+                            Hole Details
+                          </h4>
+                          <p className="text-xs text-muted-foreground">
+                            Distance and par for each hole
+                          </p>
                         </div>
-                        <div className="font-semibold text-primary">{hole.par}</div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {/* Holes 10-18 */}
-                  {courseHoles.length > 9 && (
-                    <div className="space-y-0.5">
-                      {courseHoles.slice(9, 18).map((hole) => (
-                        <div key={hole.hole} className="grid grid-cols-3 gap-2 text-xs">
-                          <div className="font-medium">Hole {hole.hole}</div>
-                          <div className="text-muted-foreground">
-                            {hole.distanceMeters ? `${hole.distanceMeters}m` : 'N/A'}
+                        <div className="p-3">
+                          {/* Table Header */}
+                          <div className="grid grid-cols-3 gap-2 mb-2 font-semibold text-xs text-muted-foreground border-b pb-1">
+                            <div>HOLES</div>
+                            <div>DIST</div>
+                            <div>PAR</div>
                           </div>
-                          <div className="font-semibold text-primary">{hole.par}</div>
+                          
+                          {/* Holes 1-9 */}
+                          <div className="space-y-0.5 mb-3">
+                            {courseHoles.slice(0, 9).map((hole) => (
+                              <div key={hole.hole} className="grid grid-cols-3 gap-2 text-xs">
+                                <div className="font-medium">Hole {hole.hole}</div>
+                                <div className="text-muted-foreground">
+                                  {hole.distanceMeters ? `${hole.distanceMeters}m` : 'N/A'}
+                                </div>
+                                <div className="font-semibold text-primary">{hole.par}</div>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          {/* Holes 10-18 */}
+                          {courseHoles.length > 9 && (
+                            <div className="space-y-0.5">
+                              {courseHoles.slice(9, 18).map((hole) => (
+                                <div key={hole.hole} className="grid grid-cols-3 gap-2 text-xs">
+                                  <div className="font-medium">Hole {hole.hole}</div>
+                                  <div className="text-muted-foreground">
+                                    {hole.distanceMeters ? `${hole.distanceMeters}m` : 'N/A'}
+                                  </div>
+                                  <div className="font-semibold text-primary">{hole.par}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      ))}
+                      </div>
+                    )}
+                  </TabsContent>
+                  <TabsContent value="map" className="mt-0">
+                    <div className="h-[500px] rounded-lg overflow-hidden border-2">
+                      <CourseMapWrapper courseId={course._id} className="h-full" />
                     </div>
-                  )}
-                </div>
+                  </TabsContent>
+                </Tabs>
               </div>
+            ) : (
+              /* Show hole details directly if no map data available */
+              courseHoles && courseHoles.length > 0 && (
+                <div className="pt-4 border-t mt-4">
+                  <div className="border rounded-lg">
+                    <div className="p-3 border-b">
+                      <h4 className="flex items-center gap-2 text-base font-semibold">
+                        <DgBasketIcon className="h-8 w-8 text-primary" size={100} />
+                        Hole Details
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        Distance and par for each hole
+                      </p>
+                    </div>
+                    <div className="p-3">
+                      {/* Table Header */}
+                      <div className="grid grid-cols-3 gap-2 mb-2 font-semibold text-xs text-muted-foreground border-b pb-1">
+                        <div>HOLES</div>
+                        <div>DIST</div>
+                        <div>PAR</div>
+                      </div>
+                      
+                      {/* Holes 1-9 */}
+                      <div className="space-y-0.5 mb-3">
+                        {courseHoles.slice(0, 9).map((hole) => (
+                          <div key={hole.hole} className="grid grid-cols-3 gap-2 text-xs">
+                            <div className="font-medium">Hole {hole.hole}</div>
+                            <div className="text-muted-foreground">
+                              {hole.distanceMeters ? `${hole.distanceMeters}m` : 'N/A'}
+                            </div>
+                            <div className="font-semibold text-primary">{hole.par}</div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Holes 10-18 */}
+                      {courseHoles.length > 9 && (
+                        <div className="space-y-0.5">
+                          {courseHoles.slice(9, 18).map((hole) => (
+                            <div key={hole.hole} className="grid grid-cols-3 gap-2 text-xs">
+                              <div className="font-medium">Hole {hole.hole}</div>
+                              <div className="text-muted-foreground">
+                                {hole.distanceMeters ? `${hole.distanceMeters}m` : 'N/A'}
+                              </div>
+                              <div className="font-semibold text-primary">{hole.par}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
             )}
 
             {/* Actions */}
@@ -247,10 +325,10 @@ export function CourseDetails({ course, onStartGame, isExpanded }: CourseDetails
                 }}
               >
                 <MapPin className="h-3 w-3 mr-1" />
-                Map
+                External Map
               </Button>
             </div>
           </CardContent>
-        </Card>
+        </div>
   );
 }
